@@ -72,6 +72,7 @@ var querySpatialStmt *sql.Stmt
 var insertSpatialStmt *sql.Stmt
 var insertSphericalShapeStmt *sql.Stmt
 
+/*
 func init() {
     connStr := "user=argo_navis_test password=test dbname=argo_navis_test sslmode=disable"
     d, err := sql.Open("postgres", connStr)
@@ -128,6 +129,7 @@ func querySpatial() ([]*DBSpatial) {
 
     return res
 }
+*/
 
 func insertSpatial(s *DBSpatial) error {
     _, err := insertSpatialStmt.Exec(s.entity,
