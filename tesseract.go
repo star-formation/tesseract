@@ -24,7 +24,7 @@ import (
 
 func init() {
 	log.Root().SetHandler(log.MultiHandler(
-		log.StreamHandler(os.Stderr, log.TerminalFormat(false)),
+		log.StreamHandler(os.Stderr, log.TerminalFormat(true)),
 		log.LvlFilterHandler(
 			log.LvlDebug,
 			log.Must.FileHandler("tesseract_errors.json", log.JSONFormat()))))
