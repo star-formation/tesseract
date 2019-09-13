@@ -29,8 +29,8 @@ type M3Comp map[*RefFrame]map[Id]*M3     // Generic 3x3 matrix component
 type QComp map[*RefFrame]map[Id]*Q       // Generic quaternion component
 
 const (
-	linearDamping  = float64(0.9999)
-	angularDamping = float64(0.9999)
+	linearDamping  = float64(1.0)
+	angularDamping = float64(1.0)
 )
 
 type RadiusComp map[*RefFrame]map[Id]*float64
@@ -101,6 +101,7 @@ func (p *Physics) NewFrame() *RefFrame {
 
 // TODO: auto-increment entity ID and decouple its components
 func (p *Physics) NewEntity(e Id, rf *RefFrame) {
+	p.VC[rf][e] = &V3{} // velocity
 	p.AC[rf][e] = &V3{} // acceleration
 	p.FC[rf][e] = &V3{} // force accumulator
 
@@ -109,6 +110,10 @@ func (p *Physics) NewEntity(e Id, rf *RefFrame) {
 
 	p.OC[rf][e] = &Q{}  // orientation
 	p.RC[rf][e] = &V3{} // rotation
+}
+
+func (p *Physics) AddForce(e Id, rf *RefFrame, f *V3) {
+	p.FC[rf][e].Add(p.FC[rf][e], f)
 }
 
 // System interface
@@ -147,7 +152,7 @@ func (p *Physics) Update(elapsed float64, f *RefFrame, hotEnts *[]Id) error {
 
 		// TODO: 8. update derived data
 
-		log.Debug("physics.Update", "e", e, "pos", p.PC[f][e], "vel", p.VC[f][e])
+		log.Debug("physics.Update", "d", elapsed, "e", e, "pos", p.PC[f][e], "vel", p.VC[f][e])
 	}
 
 	return nil

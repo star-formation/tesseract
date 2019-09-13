@@ -33,32 +33,34 @@ func setup() *Engine {
 
 	// two entities
 	e0 := Id(42)
-	e1 := Id(43)
+	//e1 := Id(43)
 
 	p.NewEntity(e0, grid)
-	p.NewEntity(e1, grid)
+	//p.NewEntity(e1, grid)
 
 	p.Ents[e0] = true
-	p.Ents[e1] = true
-
-	// X,Y,Z coordinates in meters (m)
-	p.PC[grid][e0] = &V3{1000.0, 1000.0, 1000.0}
-	p.PC[grid][e1] = &V3{1000.0, 1000.0, 1000.0}
-
-	// X,Y,Z,M velocity vector, M is meters per second (m/s)
-	p.VC[grid][e0] = &V3{1, 0, 0}
-	p.VC[grid][e1] = &V3{0, 1, 0}
+	//p.Ents[e1] = true
 
 	// Mass scalar value is kilogram (kg)
-	var m0, m1 float64
-	m0, m1 = 20.0, 40.0
+	var m0 float64
+	//var m1 float64
+	m0 = 20.0
+	//m1 = 40.0
 	p.MC[grid][e0] = &m0
-	p.MC[grid][e1] = &m1
+	//p.MC[grid][e1] = &m1
+
+	// X,Y,Z position in meters (m) from origin
+	p.PC[grid][e0] = &V3{1000.0, 1000.0, 1000.0}
+	//p.PC[grid][e1] = &V3{1000.0, 1000.0, 1000.0}
+
+	p.AddForce(e0, grid, &V3{9.8, 0, 0})
+	//p.AddForce(e1, grid, &V3{})
+	//p.AddForce(e2, grid, &V3{})
 
 	// "hot" ref frames and entities
 	frames := []*RefFrame{grid}
 	in := make(map[*RefFrame]*[]Id)
-	in[grid] = &[]Id{e0, e1}
+	in[grid] = &[]Id{e0}
 	hotEnts := &HotEnts{Frames: frames, In: in}
 
 	engine := &Engine{

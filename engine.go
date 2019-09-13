@@ -1,27 +1,28 @@
 /*  Copyright 2019 The tesseract Authors
-	
+
     This file is part of tesseract.
-    
+
     tesseract is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
     published by the Free Software Foundation, either version 3 of the
     License, or (at your option) any later version.
-	
+
     tesseract is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU Affero General Public License for more details.
-	
+
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 package tesseract
 
 import (
-    xrand "golang.org/x/exp/rand"
-    "time"
+	"time"
 
-    "github.com/ethereum/go-ethereum/log"
+	xrand "golang.org/x/exp/rand"
+
+	"github.com/ethereum/go-ethereum/log"
 )
 
 /*  NOTES
@@ -53,77 +54,77 @@ import (
 // better SoC, but the engine will likely retain a considerable amount of
 // core functions.
 type Engine struct {
-    systems []System
-    mainBus *MessageBus
-    hot *HotEnts
+	systems []System
+	mainBus *MessageBus
+	hot     *HotEnts
 }
 
-var loopTarget = 2000 * time.Millisecond
+var loopTarget = 1000 * time.Millisecond
 
 func (e *Engine) Loop() error {
-    var err error
-    var elapsed time.Duration
-    var start, now time.Time
+	var err error
+	var elapsed time.Duration
+	var start, now time.Time
 
-    // debug
-    debug := 0
+	// debug
+	debug := 0
 
-    start = time.Now()
-    for err == nil {
-        debug++
-        now = time.Now()
-        elapsed = now.Sub(start)
-        log.Info("engine.Loop", "debug", debug, "elapsed", elapsed)
+	start = time.Now()
+	for err == nil {
+		debug++
+		now = time.Now()
+		elapsed = now.Sub(start)
+		//log.Info("engine.Loop", "debug", debug, "elapsed", elapsed)
 
-        if elapsed < loopTarget {
-            time.Sleep(loopTarget - elapsed)
-            elapsed = loopTarget
-            start = time.Now()
-        } else {
-            start = now
-        }
+		if elapsed < loopTarget {
+			time.Sleep(loopTarget - elapsed)
+			elapsed = loopTarget
+			start = time.Now()
+		} else {
+			start = now
+		}
 
-        r, err := NewRand()
-        if err != nil {
-            break
-        }        
+		r, err := NewRand()
+		if err != nil {
+			break
+		}
 
-        err = e.updatehot(r, elapsed.Seconds())
-        if err != nil {
-            break
-        }
+		err = e.updatehot(r, elapsed.Seconds())
+		if err != nil {
+			break
+		}
 
-        //err = e.processTimers(r)
-        //if err != nil {
-        //    break
-        //}
+		//err = e.processTimers(r)
+		//if err != nil {
+		//    break
+		//}
 
-        err = e.handleUserActions(r)
-    }
+		err = e.handleUserActions(r)
+	}
 
-    // TODO: error handling
-    log.Info("engine.Loop", "err", err)
-    return err
+	// TODO: error handling
+	log.Info("engine.Loop", "err", err)
+	return err
 }
 
 // TODO: error handling
 func (e *Engine) updatehot(r *xrand.Rand, elapsed float64) error {
-    framePerm := r.Perm(len(e.hot.Frames))
-    for _, i := range framePerm {
-        e.updatehotFrame(r, elapsed, e.hot.Frames[i])
-    }
+	framePerm := r.Perm(len(e.hot.Frames))
+	for _, i := range framePerm {
+		e.updatehotFrame(r, elapsed, e.hot.Frames[i])
+	}
 
-    return nil
+	return nil
 }
 
 func (e *Engine) updatehotFrame(r *xrand.Rand, elapsed float64, f *RefFrame) {
-    r.Shuffle(len(*e.hot.In[f]), func(i, j int) {
-        (*e.hot.In[f])[i], (*e.hot.In[f])[j] = (*e.hot.In[f])[j], (*e.hot.In[f])[i]
-    })
+	r.Shuffle(len(*e.hot.In[f]), func(i, j int) {
+		(*e.hot.In[f])[i], (*e.hot.In[f])[j] = (*e.hot.In[f])[j], (*e.hot.In[f])[i]
+	})
 
-    for _, sys := range e.systems {
-        sys.Update(elapsed, f, e.hot.In[f])
-    }
+	for _, sys := range e.systems {
+		sys.Update(elapsed, f, e.hot.In[f])
+	}
 }
 
 /*
@@ -153,5 +154,5 @@ func (e *Engine) processTimers(r *xrand.Rand) error {
 */
 
 func (e *Engine) handleUserActions(rand *xrand.Rand) error {
-    return nil
+	return nil
 }
