@@ -27,48 +27,45 @@ func TestPhysics(t *testing.T) {
 }
 
 func setup() *Engine {
+	p := NewPhysics()
 	// grid is top-level ref frame
-	grid := &RefFrame{Parent: nil, Position: nil, Orbit: nil, Orientation: nil}
+	grid := p.NewFrame()
 
 	// two entities
 	e0 := Id(42)
 	e1 := Id(43)
-	e2 := Id(44)
-	ents := make(map[Id]bool)
-	ents[e0] = true
-	ents[e1] = true
-	ents[e2] = true
 
-	// TODO: more granular setup functions
-	ps := make(map[*RefFrame]map[Id]*V3)
-	pComp := PComp{D: ps}
-	pComp.D[grid] = make(map[Id]*V3)
+	p.NewEntity(e0, grid)
+	p.NewEntity(e1, grid)
 
-	vs := make(map[*RefFrame]map[Id]*V3)
-	vComp := VComp{D: vs}
-	vComp.D[grid] = make(map[Id]*V3)
+	p.Ents[e0] = true
+	p.Ents[e1] = true
 
-	// X,Y,Z coordinates in meters
-	pComp.D[grid][e0] = &V3{1000.0, 1000.0, 1000.0}
-	pComp.D[grid][e1] = &V3{1000.0, 1000.0, 1000.0}
-	pComp.D[grid][e2] = &V3{1000.0, 1000.0, 1000.0}
+	// X,Y,Z coordinates in meters (m)
+	p.PC[grid][e0] = &V3{1000.0, 1000.0, 1000.0}
+	p.PC[grid][e1] = &V3{1000.0, 1000.0, 1000.0}
 
 	// X,Y,Z,M velocity vector, M is meters per second (m/s)
-	vComp.D[grid][e0] = &V3{1, 0, 0}
-	vComp.D[grid][e1] = &V3{1, 1, 0}
-	vComp.D[grid][e2] = &V3{1, 1, 1}
+	p.VC[grid][e0] = &V3{1, 0, 0}
+	p.VC[grid][e1] = &V3{0, 1, 0}
 
-	physics := &Physics{ents: ents, pComp: &pComp, vComp: &vComp}
+	// Mass scalar value is kilogram (kg)
+	var m0, m1 float64
+	m0, m1 = 20.0, 40.0
+	p.MC[grid][e0] = &m0
+	p.MC[grid][e1] = &m1
 
 	// "hot" ref frames and entities
 	frames := []*RefFrame{grid}
 	in := make(map[*RefFrame]*[]Id)
-	in[grid] = &[]Id{e0, e1, e2}
+	in[grid] = &[]Id{e0, e1}
 	hotEnts := &HotEnts{Frames: frames, In: in}
 
-	engine := &Engine{systems: []System{physics},
+	engine := &Engine{
+		systems: []System{p},
 		mainBus: &MessageBus{},
-		hot:     hotEnts}
+		hot:     hotEnts,
+	}
 
 	return engine
 }

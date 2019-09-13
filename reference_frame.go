@@ -1,24 +1,21 @@
 /*  Copyright 2019 The tesseract Authors
-	
+
     This file is part of tesseract.
-    
+
     tesseract is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
     published by the Free Software Foundation, either version 3 of the
     License, or (at your option) any later version.
-	
+
     tesseract is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU Affero General Public License for more details.
-	
+
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 package tesseract
-
-import (
-)
 
 /*  See https://en.wikipedia.org/wiki/Frame_of_reference
     and https://en.wikipedia.org/wiki/Celestial_coordinate_system
@@ -61,36 +58,36 @@ import (
     (inside structure on asteroid orbiting moon orbiting planet orbiting star)
 */
 type RefFrame struct {
-    // The top-level reference frame (the Milky Way galaxy) has Parent,
-    // Position, Orbit and Orientation all set to nil.
-    Parent *RefFrame
+	// The top-level reference frame (the Milky Way galaxy) has Parent,
+	// Position, Orbit and Orientation all set to nil.
+	Parent *RefFrame
 
-    /* The location of a reference frame relative its parent is encoded
-       as either a 3D X,Y,Z position or as orbital elements, with the other
-       set as nil.
+	/* The location of a reference frame relative its parent is encoded
+	   as either a 3D X,Y,Z position or as orbital elements, with the other
+	   set as nil.
 
-       If the frame is stationary relative its parent - for example the inside
-       of a building on a planet surface - then it has a 3D position (X,Y,Z)
-       but no orbital elements.
+	   If the frame is stationary relative its parent - for example the inside
+	   of a building on a planet surface - then it has a 3D position (X,Y,Z)
+	   but no orbital elements.
 
-       For now, the only allowed movement of a reference frame relative
-       its parent is orbits.  An example of this is the grid surrounding
-       a space station orbiting a planet.  Such a frame has 3D orbital
-       elements (E,S,I,L,A,T) but no position (X,Y,Z) set.
+	   For now, the only allowed movement of a reference frame relative
+	   its parent is orbits.  An example of this is the grid surrounding
+	   a space station orbiting a planet.  Such a frame has 3D orbital
+	   elements (E,S,I,L,A,T) but no position (X,Y,Z) set.
 
-       X,Y,Z coordinates can always be derived from E,S,I,L,A,T
-       (see orbit.go) but to translate carteesian coordinates to orbital
-       elements we need both position and velocity.
-    */
-    Position *V3
-    Orbit *OE
-    
-    // Except for the top-level frame, Orientation is always non-nil;
-    // as it's required to translate local coordinates to outer frame(s).
-    // A zero (0,0,0) orientation equals inheriting parent frame orientation
-    Orientation *V3
+	   X,Y,Z coordinates can always be derived from E,S,I,L,A,T
+	   (see orbit.go) but to translate carteesian coordinates to orbital
+	   elements we need both position and velocity.
+	*/
+	Position *V3
+	Orbit    *OE
 
-    // TODO: size/shape
+	// Except for the top-level frame, Orientation is always non-nil;
+	// as it's required to translate local coordinates to outer frame(s).
+	// A zero orientation equals inheriting parent frame orientation
+	Orientation *Q
 
-    // Rotation is unsupported for now.
+	// TODO: size/shape
+
+	// Rotation is unsupported for now.
 }
