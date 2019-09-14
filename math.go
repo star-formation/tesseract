@@ -93,10 +93,21 @@ func (v *V3) SquareMagnitude() float64 {
 	return v.X*v.X + v.Y*v.Y + v.Z*v.Z
 }
 
+func (v *V3) Normalise() {
+	m := v.Magnitude()
+	if m > 0 {
+		v.MulScalar(v, 1/m)
+	}
+}
+
 func (v *V3) Invert() {
 	v.X = -v.X
 	v.Y = -v.Y
 	v.Z = -v.Z
+}
+
+func (v *V3) IsZero() bool {
+	return v.X == 0 && v.Y == 0 && v.Z == 0
 }
 
 // 3x3 Matrix

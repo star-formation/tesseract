@@ -87,6 +87,8 @@ type RefFrame struct {
 	// A zero orientation equals inheriting parent frame orientation
 	Orientation *Q
 
+	DragCoef1, DragCoef2 float64
+
 	// TODO: size/shape
 
 	// Rotation is unsupported for now.

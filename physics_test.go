@@ -30,32 +30,25 @@ func setup() *Engine {
 	p := NewPhysics()
 	// grid is top-level ref frame
 	grid := p.NewFrame()
+	grid.DragCoef1 = 0.2
+	grid.DragCoef2 = 0.4
 
-	// two entities
 	e0 := Id(42)
-	//e1 := Id(43)
 
 	p.NewEntity(e0, grid)
-	//p.NewEntity(e1, grid)
 
 	p.Ents[e0] = true
-	//p.Ents[e1] = true
 
 	// Mass scalar value is kilogram (kg)
 	var m0 float64
-	//var m1 float64
-	m0 = 20.0
-	//m1 = 40.0
+	m0 = 42000.0
 	p.MC[grid][e0] = &m0
-	//p.MC[grid][e1] = &m1
 
 	// X,Y,Z position in meters (m) from origin
-	p.PC[grid][e0] = &V3{1000.0, 1000.0, 1000.0}
-	//p.PC[grid][e1] = &V3{1000.0, 1000.0, 1000.0}
+	p.PC[grid][e0] = &V3{0.0, 0.0, 0.0}
 
-	p.AddForce(e0, grid, &V3{9.8, 0, 0})
-	//p.AddForce(e1, grid, &V3{})
-	//p.AddForce(e2, grid, &V3{})
+	p.AddForceGen(e0, grid, &ThrustForceGen{&V3{m0 * g0 * 1.0, 0, 0}})
+	p.AddForceGen(e0, grid, &DragForceGen{10.0, 80.0})
 
 	// "hot" ref frames and entities
 	frames := []*RefFrame{grid}

@@ -64,24 +64,25 @@ var loopTarget = 1000 * time.Millisecond
 func (e *Engine) Loop() error {
 	var err error
 	var elapsed time.Duration
-	var start, now time.Time
+	var start, last, now time.Time
 
 	// debug
 	debug := 0
 
 	start = time.Now()
+	last = start
 	for err == nil {
 		debug++
 		now = time.Now()
-		elapsed = now.Sub(start)
-		//log.Info("engine.Loop", "debug", debug, "elapsed", elapsed)
+		elapsed = now.Sub(last)
+		log.Debug("engine.Loop", "c", debug, "run", time.Now().Sub(start))
 
 		if elapsed < loopTarget {
 			time.Sleep(loopTarget - elapsed)
 			elapsed = loopTarget
-			start = time.Now()
+			last = time.Now()
 		} else {
-			start = now
+			last = now
 		}
 
 		r, err := NewRand()
