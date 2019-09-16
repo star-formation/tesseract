@@ -1,6 +1,6 @@
 # tesseract
 
-[![Join the chat at https://gitter.im/argo-navis-game/community](https://badges.gitter.im/argo-navis-game/community.svg)](https://gitter.im/argo-navis-game/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Discord](https://img.shields.io/badge/discord-join%20chat-blue.svg)](https://discord.gg/vJ3UX8r)
 
 Deterministic physics engine in golang.  Designed for the Argo Navis game.  Contains the Space Stone.
 
