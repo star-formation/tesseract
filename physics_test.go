@@ -19,11 +19,31 @@ package tesseract
 
 import (
 	"testing"
+
+	"github.com/ethereum/go-ethereum/log"
 )
 
 func TestPhysics(t *testing.T) {
 	engine := setup()
 	engine.Loop()
+}
+
+func TestTorque(t *testing.T) {
+	p := NewPhysics()
+	grid := p.NewFrame()
+	e0 := Id(0)
+	p.NewEntity(e0, grid)
+
+	var m0 float64
+	m0 = 42000.0
+	p.MC[grid][e0] = &m0
+
+	p.PC[grid][e0] = &V3{10.0, 10.0, 10.0}
+
+	lf := &V3{0.0, 0.0, 1.0}
+	worldPoint := &V3{14.0, 14.0, 10.0}
+	tq := p.TorqueAtPoint(e0, grid, lf, worldPoint)
+	log.Debug("TestTorque", "lfm", lf.Magnitude(), "t", tq, "tm", tq.Magnitude())
 }
 
 func setup() *Engine {
@@ -47,8 +67,8 @@ func setup() *Engine {
 	// X,Y,Z position in meters (m) from origin
 	p.PC[grid][e0] = &V3{0.0, 0.0, 0.0}
 
-	p.AddForceGen(e0, grid, &ThrustForceGen{&V3{m0 * g0 * 1.0, 0, 0}})
-	p.AddForceGen(e0, grid, &DragForceGen{10.0, 80.0})
+	p.AddForceGen(e0, grid, &ThrustForceGen{&V3{m0 * g0 * 0.01, 0, 0}})
+	//p.AddForceGen(e0, grid, &DragForceGen{10.0, 40.0})
 
 	// "hot" ref frames and entities
 	frames := []*RefFrame{grid}

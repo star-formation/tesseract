@@ -25,7 +25,9 @@ import (
  */
 
 type ForceGen interface {
-	UpdateForce(e Id, rf *RefFrame, p *Physics, duration float64) *V3
+	// Returns linear force and torque
+	UpdateForce(e Id, rf *RefFrame, p *Physics, duration float64) (*V3, *V3)
+
 	IsExpired() bool
 }
 
@@ -33,9 +35,9 @@ type DragForceGen struct {
 	DragCoef1, DragCoef2 float64
 }
 
-func (d *DragForceGen) UpdateForce(e Id, rf *RefFrame, p *Physics, duration float64) *V3 {
+func (d *DragForceGen) UpdateForce(e Id, rf *RefFrame, p *Physics, duration float64) (*V3, *V3) {
 	if p.VC[rf][e].IsZero() {
-		return nil
+		return nil, nil
 	}
 	vel := new(V3)
 	*vel = *(p.VC[rf][e])
@@ -45,7 +47,7 @@ func (d *DragForceGen) UpdateForce(e Id, rf *RefFrame, p *Physics, duration floa
 	force.Normalise()
 	force.MulScalar(force, -drag)
 	log.Debug("DragForceGen.UpdateForce", "f", force)
-	return force
+	return force, nil
 }
 
 func (d *DragForceGen) IsExpired() bool {
@@ -58,8 +60,8 @@ type ThrustForceGen struct {
 	//expiry float64
 }
 
-func (t *ThrustForceGen) UpdateForce(e Id, rf *RefFrame, p *Physics, duration float64) *V3 {
-	return t.thrust
+func (t *ThrustForceGen) UpdateForce(e Id, rf *RefFrame, p *Physics, duration float64) (*V3, *V3) {
+	return t.thrust, nil
 }
 
 func (t *ThrustForceGen) IsExpired() bool {

@@ -50,8 +50,8 @@ type Physics struct {
 	// Mass component holds float64 values
 	MC FComp
 
-	// Components for Position, Velocity, Rotation hold 3x1 vectors
-	PC, VC, RC, TC V3Comp
+	// Position, Velocity and Rotation components holds 3x1 vectors
+	PC, VC, RC V3Comp
 
 	// Orientation Component holds quaternions
 	OC QComp
@@ -72,7 +72,6 @@ func NewPhysics() *Physics {
 	p.PC = make(V3Comp, 1)
 	p.VC = make(V3Comp, 1)
 	p.RC = make(V3Comp, 1)
-	p.TC = make(V3Comp, 1)
 
 	p.OC = make(QComp, 1)
 
@@ -91,7 +90,6 @@ func (p *Physics) NewFrame() *RefFrame {
 	p.PC[rf] = make(map[Id]*V3, 10)
 	p.VC[rf] = make(map[Id]*V3, 10)
 	p.RC[rf] = make(map[Id]*V3, 10)
-	p.TC[rf] = make(map[Id]*V3, 10)
 
 	p.OC[rf] = make(map[Id]*Q, 10)
 
@@ -107,7 +105,6 @@ func (p *Physics) NewEntity(e Id, rf *RefFrame) {
 	p.VC[rf][e] = &V3{} // velocity
 
 	p.IC[rf][e] = &M3{} // inertia tensor
-	p.TC[rf][e] = &V3{} // torque accumulator
 
 	p.OC[rf][e] = &Q{}  // orientation
 	p.RC[rf][e] = &V3{} // rotation
@@ -117,6 +114,24 @@ func (p *Physics) NewEntity(e Id, rf *RefFrame) {
 
 func (p *Physics) AddForceGen(e Id, rf *RefFrame, fg ForceGen) {
 	p.FC[rf][e] = append(p.FC[rf][e], fg)
+}
+
+/*
+func (p *Physics) TorqueAtBodyPoint(e Id, rf *RefFrame, force, bodyPoint *V3) *V3 {
+	worldPoint := bodyToWorldPoint(bodyPoint)
+	return TorqueAtPoint(e, rf, force, worldPoint)
+}
+*/
+
+// TODO: in body.cpp , the force is not actually split into force on center of
+//       of mass and torque, but adds torque _on_top_of_ the force-at-point!
+// See https://www.gamedev.net/forums/topic/664930-force-and-torque/
+// TODO: clarify this assumption on e.g. position/source of force
+func (p *Physics) TorqueAtPoint(e Id, rf *RefFrame, force, worldPoint *V3) *V3 {
+	point := new(V3)
+	*point = *worldPoint
+	worldPoint.Sub(worldPoint, p.PC[rf][e])
+	return worldPoint.VectorProduct(worldPoint, force)
 }
 
 // System interface
@@ -129,21 +144,30 @@ func (p *Physics) Update(elapsed float64, rf *RefFrame, hotEnts *[]Id) error {
 
 	for _, e := range *hotEnts {
 		// update force generators
-		forceAcc := new(V3)
+		linearForce, torque := new(V3), new(V3)
 		for _, fg := range p.FC[rf][e] {
-			f := fg.UpdateForce(e, rf, p, elapsed)
-			if f != nil {
-				forceAcc.Add(forceAcc, f)
+			lf, t := fg.UpdateForce(e, rf, p, elapsed)
+			if lf != nil {
+				linearForce.Add(linearForce, lf)
+			}
+			if t != nil {
+				torque.Add(torque, t)
 			}
 		}
 
 		// update linear acceleration from forces
 		inverseMass := float64(1) / *(p.MC[rf][e])
 		lastAcc := new(V3)
-		lastAcc.AddScaledVector(forceAcc, inverseMass)
+		lastAcc.AddScaledVector(linearForce, inverseMass)
 
 		// update linear velocity
 		p.VC[rf][e].AddScaledVector(lastAcc, elapsed)
+
+		// update angular acceleration from torques
+		angularAcc := p.IC[rf][e].Transform(torque)
+
+		// update angular velocity
+		p.RC[rf][e].AddScaledVector(angularAcc, elapsed)
 
 		// apply damping (universal)
 		p.VC[rf][e].MulScalar(p.VC[rf][e], math.Pow(linearDamping, elapsed))
@@ -151,12 +175,6 @@ func (p *Physics) Update(elapsed float64, rf *RefFrame, hotEnts *[]Id) error {
 
 		// update linear position (V3.AddScaledVector)
 		p.PC[rf][e].AddScaledVector(p.VC[rf][e], elapsed)
-
-		// update angular acceleration from torques
-		angularAcc := p.IC[rf][e].Transform(p.TC[rf][e])
-
-		// update angular velocity
-		p.RC[rf][e].AddScaledVector(angularAcc, elapsed)
 
 		// update angular position (Q.AddScaledVector)
 		p.OC[rf][e].AddScaledVector(p.RC[rf][e], elapsed)
@@ -166,7 +184,7 @@ func (p *Physics) Update(elapsed float64, rf *RefFrame, hotEnts *[]Id) error {
 
 		// TODO: update derived data
 
-		log.Debug("physics.Update", "d", elapsed, "e", e, "p", p.PC[rf][e], "v", p.VC[rf][e], "a", lastAcc, "f", p.FC[rf][e])
+		log.Debug("physics.Update", "p", p.PC[rf][e], "v", p.VC[rf][e], "o", p.OC[rf][e], "r", p.RC[rf][e])
 	}
 
 	return nil

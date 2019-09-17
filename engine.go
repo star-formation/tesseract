@@ -75,7 +75,7 @@ func (e *Engine) Loop() error {
 		debug++
 		now = time.Now()
 		elapsed = now.Sub(last)
-		log.Debug("engine.Loop", "c", debug, "run", time.Now().Sub(start))
+		//log.Debug("engine.Loop", "c", debug, "run", time.Now().Sub(start))
 
 		if elapsed < loopTarget {
 			time.Sleep(loopTarget - elapsed)
