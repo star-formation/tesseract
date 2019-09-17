@@ -18,43 +18,45 @@
 package tesseract
 
 import (
-    "errors"
-    "encoding/binary"
-    //"github.com/ethereum/go-ethereum/log"
+	"encoding/binary"
+	"errors"
+	//"github.com/ethereum/go-ethereum/log"
 )
 
-// Actions are authenticated attempts to modify the game state.
+// Actions are authenticated requests to modify the game state.
 // Most actions originate from users, where we consider them
 // authenticated post user account signature verification.
 // Actions can also originate from the game engine itself, to e.g. trigger
 // regular story events, in which case they are always authenticated.
-
 type Action interface {
-    Execute() error
+	Execute() error
+}
+
+// Reads are requests to obtain part of the game state.
+type Read interface {
 }
 
 // Game action codes.
 const (
-    // TODO: for testing, this returns the entire global game state.
-    GetGlobalState = 601
+	// TODO: for testing, this returns the entire global game state.
+	GetGlobalState = 900
 )
 
-// The input to this function is raw bytes handed from other layers, e.g.
+// The input to this function is raw bytes from other layers, e.g.
 // the binary payload of a WebSocket message.  As such these bytes have
 // not yet been validated, and may be malicious.
 // TODO: refactor and document security assumptions and input validation
 // in diff layers.
 func HandleMsg(msg []byte) error {
-    // TODO: limit actions per account over time
-    // TODO: make lookup for codes
-    if len(msg) < 2 {
-        return errors.New("invalid command")
-    } 
-    code := binary.BigEndian.Uint16(msg[0:1])
-    if code != GetGlobalState {
-        return errors.New("invalid action code")
-    }
+	// TODO: limit actions per account over time
+	// TODO: make lookup for codes
+	if len(msg) < 2 {
+		return errors.New("invalid command")
+	}
+	code := binary.LittleEndian.Uint16(msg[0:1])
+	if code != GetGlobalState {
+		return errors.New("invalid action code")
+	}
 
-    return nil
+	return nil
 }
-

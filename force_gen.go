@@ -26,7 +26,7 @@ import (
 
 type ForceGen interface {
 	// Returns linear force and torque
-	UpdateForce(e Id, rf *RefFrame, p *Physics, duration float64) (*V3, *V3)
+	UpdateForce(e Id, rf *RefFrame, duration float64) (*V3, *V3)
 
 	IsExpired() bool
 }
@@ -35,12 +35,12 @@ type DragForceGen struct {
 	DragCoef1, DragCoef2 float64
 }
 
-func (d *DragForceGen) UpdateForce(e Id, rf *RefFrame, p *Physics, duration float64) (*V3, *V3) {
-	if p.VC[rf][e].IsZero() {
+func (d *DragForceGen) UpdateForce(e Id, rf *RefFrame, duration float64) (*V3, *V3) {
+	if S.VC[rf][e].IsZero() {
 		return nil, nil
 	}
 	vel := new(V3)
-	*vel = *(p.VC[rf][e])
+	*vel = *(S.VC[rf][e])
 	velMag := vel.Magnitude()
 	drag := velMag*d.DragCoef1 + velMag*velMag*d.DragCoef2
 	force := vel
@@ -60,7 +60,7 @@ type ThrustForceGen struct {
 	//expiry float64
 }
 
-func (t *ThrustForceGen) UpdateForce(e Id, rf *RefFrame, p *Physics, duration float64) (*V3, *V3) {
+func (t *ThrustForceGen) UpdateForce(e Id, rf *RefFrame, duration float64) (*V3, *V3) {
 	return t.thrust, nil
 }
 

@@ -30,90 +30,8 @@ const (
 	angularDamping = float64(1.0)
 )
 
-type FComp map[*RefFrame]map[Id]*float64 // Generic float64 component
-type V3Comp map[*RefFrame]map[Id]*V3     // Generic 3x1 vector component
-type M3Comp map[*RefFrame]map[Id]*M3     // Generic 3x3 matrix component
-type QComp map[*RefFrame]map[Id]*Q       // Generic quaternion component
-
-type RadiusComp map[*RefFrame]map[Id]*float64
-
-// TODO ...
-type HotEnts struct {
-	Frames []*RefFrame
-	In     map[*RefFrame]*[]Id
-}
-
 // Physics Engine
 type Physics struct {
-	Ents map[Id]bool
-
-	// Mass component holds float64 values
-	MC FComp
-
-	// Position, Velocity and Rotation components holds 3x1 vectors
-	PC, VC, RC V3Comp
-
-	// Orientation Component holds quaternions
-	OC QComp
-
-	// Inertia component holds 3x3 matrices
-	IC M3Comp
-
-	FC map[*RefFrame]map[Id][]ForceGen
-}
-
-func NewPhysics() *Physics {
-	p := new(Physics)
-
-	p.Ents = make(map[Id]bool, 10)
-
-	p.MC = make(FComp, 1)
-
-	p.PC = make(V3Comp, 1)
-	p.VC = make(V3Comp, 1)
-	p.RC = make(V3Comp, 1)
-
-	p.OC = make(QComp, 1)
-
-	p.IC = make(M3Comp, 1)
-
-	p.FC = make(map[*RefFrame]map[Id][]ForceGen, 1)
-
-	return p
-}
-
-func (p *Physics) NewFrame() *RefFrame {
-	rf := new(RefFrame)
-
-	p.MC[rf] = make(map[Id]*float64, 10)
-
-	p.PC[rf] = make(map[Id]*V3, 10)
-	p.VC[rf] = make(map[Id]*V3, 10)
-	p.RC[rf] = make(map[Id]*V3, 10)
-
-	p.OC[rf] = make(map[Id]*Q, 10)
-
-	p.IC[rf] = make(map[Id]*M3, 10)
-
-	p.FC[rf] = make(map[Id][]ForceGen, 10)
-
-	return rf
-}
-
-// TODO: auto-increment entity ID and decouple its components
-func (p *Physics) NewEntity(e Id, rf *RefFrame) {
-	p.VC[rf][e] = &V3{} // velocity
-
-	p.IC[rf][e] = &M3{} // inertia tensor
-
-	p.OC[rf][e] = &Q{}  // orientation
-	p.RC[rf][e] = &V3{} // rotation
-
-	p.FC[rf][e] = []ForceGen{} // Force Generators
-}
-
-func (p *Physics) AddForceGen(e Id, rf *RefFrame, fg ForceGen) {
-	p.FC[rf][e] = append(p.FC[rf][e], fg)
 }
 
 /*
@@ -121,7 +39,7 @@ func (p *Physics) TorqueAtBodyPoint(e Id, rf *RefFrame, force, bodyPoint *V3) *V
 	worldPoint := bodyToWorldPoint(bodyPoint)
 	return TorqueAtPoint(e, rf, force, worldPoint)
 }
-*/
+
 
 // TODO: in body.cpp , the force is not actually split into force on center of
 //       of mass and torque, but adds torque _on_top_of_ the force-at-point!
@@ -130,9 +48,10 @@ func (p *Physics) TorqueAtBodyPoint(e Id, rf *RefFrame, force, bodyPoint *V3) *V
 func (p *Physics) TorqueAtPoint(e Id, rf *RefFrame, force, worldPoint *V3) *V3 {
 	point := new(V3)
 	*point = *worldPoint
-	worldPoint.Sub(worldPoint, p.PC[rf][e])
+	worldPoint.Sub(worldPoint, S.PC[rf][e])
 	return worldPoint.VectorProduct(worldPoint, force)
 }
+*/
 
 // System interface
 func (p *Physics) Init() error {
@@ -145,8 +64,8 @@ func (p *Physics) Update(elapsed float64, rf *RefFrame, hotEnts *[]Id) error {
 	for _, e := range *hotEnts {
 		// update force generators
 		linearForce, torque := new(V3), new(V3)
-		for _, fg := range p.FC[rf][e] {
-			lf, t := fg.UpdateForce(e, rf, p, elapsed)
+		for _, fg := range S.FC[rf][e] {
+			lf, t := fg.UpdateForce(e, rf, elapsed)
 			if lf != nil {
 				linearForce.Add(linearForce, lf)
 			}
@@ -156,47 +75,36 @@ func (p *Physics) Update(elapsed float64, rf *RefFrame, hotEnts *[]Id) error {
 		}
 
 		// update linear acceleration from forces
-		inverseMass := float64(1) / *(p.MC[rf][e])
+		inverseMass := float64(1) / *(S.MC[rf][e])
 		lastAcc := new(V3)
 		lastAcc.AddScaledVector(linearForce, inverseMass)
 
 		// update linear velocity
-		p.VC[rf][e].AddScaledVector(lastAcc, elapsed)
+		S.VC[rf][e].AddScaledVector(lastAcc, elapsed)
 
 		// update angular acceleration from torques
-		angularAcc := p.IC[rf][e].Transform(torque)
+		angularAcc := S.IC[rf][e].Transform(torque)
 
 		// update angular velocity
-		p.RC[rf][e].AddScaledVector(angularAcc, elapsed)
+		S.RC[rf][e].AddScaledVector(angularAcc, elapsed)
 
 		// apply damping (universal)
-		p.VC[rf][e].MulScalar(p.VC[rf][e], math.Pow(linearDamping, elapsed))
-		p.RC[rf][e].MulScalar(p.RC[rf][e], math.Pow(angularDamping, elapsed))
+		S.VC[rf][e].MulScalar(S.VC[rf][e], math.Pow(linearDamping, elapsed))
+		S.RC[rf][e].MulScalar(S.RC[rf][e], math.Pow(angularDamping, elapsed))
 
 		// update linear position (V3.AddScaledVector)
-		p.PC[rf][e].AddScaledVector(p.VC[rf][e], elapsed)
+		S.PC[rf][e].AddScaledVector(S.VC[rf][e], elapsed)
 
 		// update angular position (Q.AddScaledVector)
-		p.OC[rf][e].AddScaledVector(p.RC[rf][e], elapsed)
+		S.OC[rf][e].AddScaledVector(S.RC[rf][e], elapsed)
 
 		// normalize orientation
-		p.OC[rf][e].Normalise()
+		S.OC[rf][e].Normalise()
 
 		// TODO: update derived data
 
-		log.Debug("physics.Update", "p", p.PC[rf][e], "v", p.VC[rf][e], "o", p.OC[rf][e], "r", p.RC[rf][e])
+		log.Debug("physics.Update", "p", S.PC[rf][e], "v", S.VC[rf][e], "o", S.OC[rf][e], "r", S.RC[rf][e])
 	}
 
 	return nil
-}
-
-func (p *Physics) RegisterEntity(id Id) {
-	p.Ents[id] = true
-}
-func (p *Physics) DeregisterEntity(id Id) {
-	p.Ents[id] = false
-}
-
-func magnitude(x, y, z float64) float64 {
-	return math.Sqrt(x*x + y*y + z*z)
 }
