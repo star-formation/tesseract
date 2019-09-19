@@ -18,6 +18,7 @@
 package tesseract
 
 import (
+	"encoding/json"
 	"time"
 
 	xrand "golang.org/x/exp/rand"
@@ -59,7 +60,7 @@ type Engine struct {
 	hot     *HotEnts
 }
 
-var loopTarget = 1000 * time.Millisecond
+var loopTarget = 20 * time.Millisecond
 
 func (e *Engine) Loop() error {
 	var err error
@@ -101,6 +102,12 @@ func (e *Engine) Loop() error {
 		//}
 
 		err = e.handleUserActions(r)
+
+		j, err := json.Marshal(S)
+		if err != nil {
+			return err
+		}
+		S.MB.Post(j)
 	}
 
 	// TODO: error handling
