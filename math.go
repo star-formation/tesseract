@@ -17,7 +17,9 @@
 */
 package tesseract
 
-import "math"
+import (
+	"math"
+)
 
 /* Vector, Matrix and Quaternion Math.
 

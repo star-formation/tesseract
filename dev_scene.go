@@ -17,40 +17,40 @@
 */
 package tesseract
 
+import "github.com/ethereum/go-ethereum/log"
+
 func DevScene1() {
 	ResetState()
-	// grid is top-level ref frame
-	grid := S.NewFrame()
-	grid.DragCoef1 = 0.2
-	grid.DragCoef2 = 0.4
 
 	e0 := Id(42)
-	S.NewEntity(e0, grid)
+	S.NewEntity(e0)
 	S.Ents[e0] = true
+	S.HotEnts[e0] = true
 
 	// Mass scalar value is kilogram (kg)
 	var m0 float64
 	m0 = 42000.0
-	S.MC[grid][e0] = &m0
+	S.MassC[e0] = &m0
 
 	// X,Y,Z position in kilometers (km) from origin
-	S.PC[grid][e0] = &V3{-200, 600, -200}
+	S.PC[e0] = &V3{-200, 600, -200}
 
-	S.AddForceGen(e0, grid, &ThrustForceGen{&V3{m0 * g0 * 0.01, 0, 0}})
+	// TODO: add ship class entry for e0
+	S.SCC[e0] = &WarmJet{}
+
+	ic := InertiaTensorCuboid(m0, 14, 6, 30)
+	ic.Inverse()
+	log.Debug("devscene", "ic", ic)
+	*S.RC[e0].IITB = *ic
+	//log.Debug("devscene", "S.ICB[e0]", S.ICB[e0])
+	//S.AddForceGen(e0, &ThrustForceGen{&V3{m0 * g0 * 0.01, 0, 0}})
 	//S.AddForceGen(e0, grid, &DragForceGen{10.0, 40.0})
 
-	// "hot" ref frames and entities
-	frames := []*RefFrame{grid}
-	in := make(map[*RefFrame]*[]Id)
-	in[grid] = &[]Id{e0}
-	hotEnts := &HotEnts{Frames: frames, In: in}
-	S.RefFrames = frames
-
-	engine := &Engine{
-		systems: []System{&Physics{}},
-		mainBus: &MessageBus{},
-		hot:     hotEnts,
+	actionChan := make(chan Action, 10)
+	GE = &GameEngine{
+		systems:    []System{&Physics{}},
+		actionChan: actionChan,
 	}
 
-	go engine.Loop()
+	go GE.Loop()
 }

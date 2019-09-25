@@ -26,7 +26,7 @@ import (
 
 type ForceGen interface {
 	// Returns linear force and torque
-	UpdateForce(e Id, rf *RefFrame, duration float64) (*V3, *V3)
+	UpdateForce(e Id, duration float64) (*V3, *V3)
 
 	IsExpired() bool
 }
@@ -35,12 +35,12 @@ type DragForceGen struct {
 	DragCoef1, DragCoef2 float64
 }
 
-func (d *DragForceGen) UpdateForce(e Id, rf *RefFrame, duration float64) (*V3, *V3) {
-	if S.VC[rf][e].IsZero() {
+func (d *DragForceGen) UpdateForce(e Id, duration float64) (*V3, *V3) {
+	if S.MC[e].V.IsZero() {
 		return nil, nil
 	}
 	vel := new(V3)
-	*vel = *(S.VC[rf][e])
+	*vel = *(S.MC[e].V)
 	velMag := vel.Magnitude()
 	drag := velMag*d.DragCoef1 + velMag*velMag*d.DragCoef2
 	force := vel
@@ -54,16 +54,40 @@ func (d *DragForceGen) IsExpired() bool {
 	return false
 }
 
+// For e.g. center-of-mass-aligned engines
 type ThrustForceGen struct {
 	thrust *V3
 	// TODO: think about temporary and persistent thrust
 	//expiry float64
 }
 
-func (t *ThrustForceGen) UpdateForce(e Id, rf *RefFrame, duration float64) (*V3, *V3) {
-	return t.thrust, nil
+func (t *ThrustForceGen) UpdateForce(e Id, duration float64) (*V3, *V3) {
+	return new(V3).MulScalar(t.thrust, duration), nil
 }
 
 func (t *ThrustForceGen) IsExpired() bool {
 	return false
+}
+
+// For Ship turning
+type TurnForceGen struct {
+	torque   *V3
+	timeLeft float64
+}
+
+func (t *TurnForceGen) UpdateForce(e Id, elapsed float64) (*V3, *V3) {
+	// TODO: debug why no resulting torque
+	log.Debug("TurnForceGen.UpdateForce", "tq", *t.torque)
+	if t.timeLeft > elapsed {
+		t.timeLeft -= elapsed
+		return nil, new(V3).MulScalar(t.torque, elapsed)
+	}
+
+	resTorque := new(V3).MulScalar(t.torque, t.timeLeft)
+	t.timeLeft = 0
+	return nil, resTorque
+}
+
+func (t *TurnForceGen) IsExpired() bool {
+	return t.timeLeft == 0
 }

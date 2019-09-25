@@ -29,40 +29,71 @@ import (
 // the outer blockchain layer.
 var S *State
 
-type FComp map[*RefFrame]map[Id]*float64 // Generic float64 component
-type V3Comp map[*RefFrame]map[Id]*V3     // Generic 3x1 vector component
-type M3Comp map[*RefFrame]map[Id]*M3     // Generic 3x3 matrix component
-type QComp map[*RefFrame]map[Id]*Q       // Generic quaternion component
+type Mobile struct {
+	V   *V3         // velocity
+	FGs *[]ForceGen // force/torque generators
+}
 
-type RadiusComp map[*RefFrame]map[Id]*float64
-
-type HotEnts struct {
-	Frames []*RefFrame
-	In     map[*RefFrame]*[]Id
+// If an object can rotate it has an inertia tensor
+type Rotational struct {
+	R    *V3 // Rotation X,Y,Z 3D vector
+	IITB *M3 // Inverse Inertia Tensor Body space/coordinates
+	IITW *M3 // Inverse Inertia Tensor World space/coordinates
+	T    *M4 // Transform 3x4 matrix transforming body space/coordinates to world
 }
 
 // TODO: JSON tags and encoding for entire state.  Easiest during dev/test.
 //       Replaced by compact, fast binary encoding for prod.
 type State struct {
+	// Game Engine State
 	MB *MessageBus
+	AB *MessageBus
 
-	RefFrames []*RefFrame
+	Ents    map[Id]bool
+	HotEnts map[Id]bool
 
-	Ents map[Id]bool
+	//RefFrames []*RefFrame
+	//RFC map[Id]*RefFrame
+	//HotRefFrames []*RefFrame
 
+	//
+	// Physics Components
+	//
 	// Mass component holds float64 values
-	MC FComp
+	MassC map[Id]*float64
 
-	// Position, Velocity and Rotation components holds 3x1 vectors
-	PC, VC, RC V3Comp
+	// Position, Velocity components holds 3x1 vectors
+	PC map[Id]*V3
 
 	// Orientation Component holds quaternions
-	OC QComp
+	OC map[Id]*Q
 
-	// Inertia component holds 3x3 matrices
-	IC M3Comp
+	// Holds velocity and force generators for movable entities
+	MC map[Id]Mobile
 
-	FC map[*RefFrame]map[Id][]ForceGen
+	// Holds rotational data for entities that can rotate
+	RC map[Id]Rotational
+
+	// TODO: for now all shapes are perfect bounding spheres
+	// Sphere Radius Component
+	SRC map[Id]*float64
+
+	// Cargo Objects Component (entities in a cargo bay)
+	COC map[Id][]Id
+
+	// Volume Component
+	VOC map[Id]*float64
+
+	// Total Aerodynamic Lift and Drag Coefficients
+	// These change depending on attached modules and player skills
+	// TODO: split into subsonic, supersonic, hypersonic
+	AeroLiftCoef map[Id]*float64
+	AeroDragCoef map[Id]*float64
+
+	//
+	// Ship Class Component
+	///
+	SCC map[Id]ShipClass
 }
 
 func ResetState() {
@@ -71,55 +102,37 @@ func ResetState() {
 	channels := make([]chan<- []byte, 0)
 	s.MB = &MessageBus{channels}
 
+	channels2 := make([]chan<- []byte, 0)
+	s.AB = &MessageBus{channels2}
+
 	s.Ents = make(map[Id]bool, 10)
+	s.HotEnts = make(map[Id]bool, 10)
 
-	s.MC = make(FComp, 1)
+	s.MassC = make(map[Id]*float64, 1)
+	s.PC = make(map[Id]*V3, 1)
 
-	s.PC = make(V3Comp, 1)
-	s.VC = make(V3Comp, 1)
-	s.RC = make(V3Comp, 1)
+	s.OC = make(map[Id]*Q, 1)
 
-	s.OC = make(QComp, 1)
+	s.MC = make(map[Id]Mobile, 1)
+	s.RC = make(map[Id]Rotational, 1)
 
-	s.IC = make(M3Comp, 1)
-
-	s.FC = make(map[*RefFrame]map[Id][]ForceGen, 1)
+	s.SCC = make(map[Id]ShipClass, 1)
 
 	S = s
 }
 
-func (s *State) NewFrame() *RefFrame {
-	rf := new(RefFrame)
-
-	s.MC[rf] = make(map[Id]*float64, 10)
-
-	s.PC[rf] = make(map[Id]*V3, 10)
-	s.VC[rf] = make(map[Id]*V3, 10)
-	s.RC[rf] = make(map[Id]*V3, 10)
-
-	s.OC[rf] = make(map[Id]*Q, 10)
-
-	s.IC[rf] = make(map[Id]*M3, 10)
-
-	s.FC[rf] = make(map[Id][]ForceGen, 10)
-
-	return rf
-}
-
 // TODO: auto-increment entity ID and decouple its component
-func (s *State) NewEntity(e Id, rf *RefFrame) {
-	s.VC[rf][e] = &V3{} // velocity
+func (s *State) NewEntity(e Id) {
+	s.OC[e] = new(Q)
 
-	s.IC[rf][e] = &M3{} // inertia tensor
+	fgs := make([]ForceGen, 0)
+	S.MC[e] = Mobile{new(V3), &fgs}
 
-	s.OC[rf][e] = &Q{}  // orientation
-	s.RC[rf][e] = &V3{} // rotation
-
-	s.FC[rf][e] = []ForceGen{} // Force Generators
+	s.RC[e] = Rotational{new(V3), new(M3), new(M3), new(M4)}
 }
 
-func (s *State) AddForceGen(e Id, rf *RefFrame, fg ForceGen) {
-	s.FC[rf][e] = append(s.FC[rf][e], fg)
+func (s *State) AddForceGen(e Id, fg ForceGen) {
+	*(s.MC[e].FGs) = append(*(s.MC[e].FGs), fg)
 }
 
 type EntJSON struct {
@@ -141,21 +154,18 @@ type RefFrameJSON struct {
 func (s *State) MarshalJSON() ([]byte, error) {
 	//log.Debug("MarshalJSON")
 	rfJSONs := make([]RefFrameJSON, 0)
-	for _, rf := range s.RefFrames {
-		rfJSON := RefFrameJSON{}
-		for eId, m := range s.MC[rf] {
-			entJSON := EntJSON{
-				eId,
-				m,
-				s.PC[rf][eId],
-				s.VC[rf][eId],
-				s.OC[rf][eId],
-				s.RC[rf][eId],
-			}
-			rfJSON.Ents = append(rfJSON.Ents, entJSON)
+	rfJSON := RefFrameJSON{}
+	for eId, mass := range s.MassC {
+		entJSON := EntJSON{
+			eId,
+			mass,
+			s.PC[eId],
+			s.MC[eId].V,
+			s.OC[eId],
+			s.RC[eId].R,
 		}
-
-		rfJSONs = append(rfJSONs, rfJSON)
+		rfJSON.Ents = append(rfJSON.Ents, entJSON)
 	}
+	rfJSONs = append(rfJSONs, rfJSON)
 	return json.Marshal(rfJSONs)
 }

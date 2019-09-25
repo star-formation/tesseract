@@ -19,6 +19,7 @@ package tesseract
 
 import (
 	"encoding/json"
+	"errors"
 	"time"
 
 	xrand "golang.org/x/exp/rand"
@@ -45,6 +46,11 @@ import (
 
 */
 
+const (
+	loopTarget        = 1000 * time.Millisecond
+	maxActionsPerLoop = 10
+)
+
 // The Engine manages entities, components and systems and handles
 // much of the core operations of the game engine.
 //
@@ -54,19 +60,20 @@ import (
 // Long term we want to abstract out functionality into separate modules for
 // better SoC, but the engine will likely retain a considerable amount of
 // core functions.
-type Engine struct {
-	systems []System
-	mainBus *MessageBus
-	hot     *HotEnts
+var GE *GameEngine
+
+type GameEngine struct {
+	systems    []System
+	actionChan chan Action
 }
 
-var loopTarget = 20 * time.Millisecond
-
-func (e *Engine) Loop() error {
+func (e *GameEngine) Loop() error {
 	var err error
 	var elapsed time.Duration
 	var start, last, now time.Time
 
+	var r *xrand.Rand
+	var j []byte
 	// debug
 	debug := 0
 
@@ -86,12 +93,12 @@ func (e *Engine) Loop() error {
 			last = now
 		}
 
-		r, err := NewRand()
+		r, err = NewRand()
 		if err != nil {
 			break
 		}
 
-		err = e.updatehot(r, elapsed.Seconds())
+		err = e.updateHotEnts(r, elapsed.Seconds())
 		if err != nil {
 			break
 		}
@@ -102,10 +109,13 @@ func (e *Engine) Loop() error {
 		//}
 
 		err = e.handleUserActions(r)
-
-		j, err := json.Marshal(S)
 		if err != nil {
-			return err
+			break
+		}
+
+		j, err = json.Marshal(S)
+		if err != nil {
+			break
 		}
 		S.MB.Post(j)
 	}
@@ -115,52 +125,41 @@ func (e *Engine) Loop() error {
 	return err
 }
 
-// TODO: error handling
-func (e *Engine) updatehot(r *xrand.Rand, elapsed float64) error {
-	framePerm := r.Perm(len(e.hot.Frames))
-	for _, i := range framePerm {
-		e.updatehotFrame(r, elapsed, e.hot.Frames[i])
-	}
-
-	return nil
-}
-
-func (e *Engine) updatehotFrame(r *xrand.Rand, elapsed float64, f *RefFrame) {
-	r.Shuffle(len(*e.hot.In[f]), func(i, j int) {
-		(*e.hot.In[f])[i], (*e.hot.In[f])[j] = (*e.hot.In[f])[j], (*e.hot.In[f])[i]
-	})
-
+func (e *GameEngine) updateHotEnts(r *xrand.Rand, elapsed float64) error {
 	for _, sys := range e.systems {
-		sys.Update(elapsed, f, e.hot.In[f])
+		err := sys.Update(elapsed)
+		if err != nil {
+			return err
+		}
 	}
-}
-
-/*
-func (e *Engine) processTimers(r *xrand.Rand) error {
-    var err error
-    toRemove := []Id{}
-    now := time.Now()
-    for _, t := e.timerComponent.Sorted {
-        if t.Time.After(now) {
-            return nil
-        }
-
-        toRemove = append(toRemove, t.Id)
-        err = t.Action.Execute()
-        if err != nil {
-            break
-        }
-    }
-
-    // TODO: make O(1) for t.Sorted as we're removing in-order
-    for _, i := range toRemove {
-        e.timerComponent.RemoveEntity(i)
-    }
-
-    return err
-}
-*/
-
-func (e *Engine) handleUserActions(rand *xrand.Rand) error {
 	return nil
+}
+
+func (e *GameEngine) handleUserActions(rand *xrand.Rand) error {
+	var actions []Action
+	select {
+	default:
+		return nil
+	case action := <-e.actionChan:
+		log.Debug("handleUserActions", "e.actionChan", e.actionChan, "action", action)
+		//log.Debug("handleUserActions", "a", a)
+		actions = make([]Action, 0)
+		actions = append(actions, action)
+		for i := 0; i < maxActionsPerLoop; i++ {
+			select {
+			default:
+				for _, a := range actions {
+					log.Debug("handleUserActions", "a", a)
+					err := a.Execute()
+					if err != nil {
+						return err
+					}
+				}
+				return nil
+			case a := <-e.actionChan:
+				actions = append(actions, a)
+			}
+		}
+	}
+	return errors.New("wtf")
 }

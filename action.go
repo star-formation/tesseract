@@ -18,45 +18,74 @@
 package tesseract
 
 import (
-	"encoding/binary"
-	"errors"
+	"encoding/json"
+	"fmt"
+	"strconv"
+
+	"github.com/ethereum/go-ethereum/log"
 	//"github.com/ethereum/go-ethereum/log"
 )
 
 // Actions are authenticated requests to modify the game state.
 // Most actions originate from users, where we consider them
 // authenticated post user account signature verification.
-// Actions can also originate from the game engine itself, to e.g. trigger
-// regular story events, in which case they are always authenticated.
+// Actions can also originate from the game engine itself;
+// such actions are always considered authenticated.
 type Action interface {
 	Execute() error
 }
-
-// Reads are requests to obtain part of the game state.
-type Read interface {
-}
-
-// Game action codes.
-const (
-	// TODO: for testing, this returns the entire global game state.
-	GetGlobalState = 900
-)
 
 // The input to this function is raw bytes from other layers, e.g.
 // the binary payload of a WebSocket message.  As such these bytes have
 // not yet been validated, and may be malicious.
 // TODO: refactor and document security assumptions and input validation
 // in diff layers.
+// TODO: for dev/test we use a simple JSON schema
 func HandleMsg(msg []byte) error {
-	// TODO: limit actions per account over time
-	// TODO: make lookup for codes
-	if len(msg) < 2 {
-		return errors.New("invalid command")
+	log.Debug("HandleMsg", "msg", string(msg))
+	var j map[string]interface{}
+	err := json.Unmarshal(msg, &j)
+	if err != nil {
+		return err
 	}
-	code := binary.LittleEndian.Uint16(msg[0:1])
-	if code != GetGlobalState {
-		return errors.New("invalid action code")
+	switch j["action"] {
+	case "getGlobalState":
+		return nil
+	case "rotate":
+		e, err := strconv.ParseUint(j["entity"].(string), 10, 64)
+		if err != nil {
+			return err
+		}
+		params := j["params"].(map[string]interface{})
+		duration := params["duration"].(float64)
+		torque := params["torque"].(map[string]interface{})
+		x := torque["x"].(float64)
+		y := torque["y"].(float64)
+		z := torque["z"].(float64)
+		//log.Debug("FUNK", "e", e, "d", duration, "x", x, "y", y, "z", z)
+		ar := &ActionRotate{Id(e), &V3{x, y, z}, duration}
+		//log.Debug("FUNK", "GE", *GE)
+		GE.actionChan <- ar
+	default:
+		return fmt.Errorf("unsupported message %v", string(msg))
 	}
 
+	return nil
+}
+
+type ActionRotate struct {
+	entity   Id
+	t        *V3 // torque
+	duration float64
+}
+
+func (a *ActionRotate) Execute() error {
+	///log.Debug("FUNK", "S.SCC", *GE)
+	max := S.SCC[a.entity].CMGTorqueCap()
+	if a.t.X > max.X || a.t.Y > max.Y || a.t.Z > max.Z {
+		return fmt.Errorf("torque %v %v %v larger than CMG cap %v %v %v", a.t.X, a.t.Y, a.t.Z, max.X, max.Y, max.Z)
+	}
+
+	S.AddForceGen(a.entity, &TurnForceGen{a.t, a.duration})
 	return nil
 }

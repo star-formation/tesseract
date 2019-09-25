@@ -44,7 +44,7 @@ type System interface {
 
 	// hotEnts must be randomized using an on-chain, deterministic and
 	// unpredictable random beacon
-	Update(elapsed float64, frame *RefFrame, hotEnts *[]Id) error
+	Update(elapsed float64) error
 
 	//RegisterEntity(id Id)
 	//DeregisterEntity(id Id)
