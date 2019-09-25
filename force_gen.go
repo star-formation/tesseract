@@ -76,7 +76,6 @@ type TurnForceGen struct {
 }
 
 func (t *TurnForceGen) UpdateForce(e Id, elapsed float64) (*V3, *V3) {
-	// TODO: debug why no resulting torque
 	log.Debug("TurnForceGen.UpdateForce", "tq", *t.torque)
 	if t.timeLeft > elapsed {
 		t.timeLeft -= elapsed

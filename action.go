@@ -62,9 +62,7 @@ func HandleMsg(msg []byte) error {
 		x := torque["x"].(float64)
 		y := torque["y"].(float64)
 		z := torque["z"].(float64)
-		//log.Debug("FUNK", "e", e, "d", duration, "x", x, "y", y, "z", z)
 		ar := &ActionRotate{Id(e), &V3{x, y, z}, duration}
-		//log.Debug("FUNK", "GE", *GE)
 		GE.actionChan <- ar
 	default:
 		return fmt.Errorf("unsupported message %v", string(msg))
@@ -80,7 +78,6 @@ type ActionRotate struct {
 }
 
 func (a *ActionRotate) Execute() error {
-	///log.Debug("FUNK", "S.SCC", *GE)
 	max := S.SCC[a.entity].CMGTorqueCap()
 	if a.t.X > max.X || a.t.Y > max.Y || a.t.Z > max.Z {
 		return fmt.Errorf("torque %v %v %v larger than CMG cap %v %v %v", a.t.X, a.t.Y, a.t.Z, max.X, max.Y, max.Z)

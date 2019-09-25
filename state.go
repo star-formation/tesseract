@@ -152,7 +152,6 @@ type RefFrameJSON struct {
 // an array of entities where each entity has mass, position, etc.
 // TODO: for now, we assume all entities have all components
 func (s *State) MarshalJSON() ([]byte, error) {
-	//log.Debug("MarshalJSON")
 	rfJSONs := make([]RefFrameJSON, 0)
 	rfJSON := RefFrameJSON{}
 	for eId, mass := range s.MassC {

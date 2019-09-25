@@ -65,7 +65,6 @@ func (p *Physics) Update(elapsed float64) error {
 		expiredFGs := make(map[int]bool, 0)
 		for i, fg := range *S.MC[e].FGs {
 			lf, t := fg.UpdateForce(e, elapsed)
-			//log.Debug("Physics.Update", "lf", lf, "t", t)
 			if lf != nil {
 				linearForce.Add(linearForce, lf)
 			}
@@ -87,7 +86,6 @@ func (p *Physics) Update(elapsed float64) error {
 
 		// update angular acceleration from torques
 		angularAcc := S.RC[e].IITW.Transform(torque)
-		log.Debug("FUNK", "torque", torque, "angularAcc", angularAcc)
 
 		// update angular velocity
 		S.RC[e].R.AddScaledVector(angularAcc, elapsed)
@@ -119,7 +117,6 @@ func (p *Physics) Update(elapsed float64) error {
 		}
 		*S.MC[e].FGs = newFGs
 
-		// "p", S.PC[e], "v", S.VC[e]
 		log.Debug("physics.Update", "o", S.OC[e], "r", S.RC[e].R)
 	}
 
