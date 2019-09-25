@@ -106,7 +106,7 @@ func (p *Physics) Update(elapsed float64) error {
 		updateTransformMatrix(S.RC[e].T, S.PC[e], S.OC[e])
 
 		// update inverse inertia tensor in world coordinates
-		updateInertiaTensor(S.RC[e].IITW, S.RC[e].IITB, S.RC[e].T, S.OC[e])
+		updateInertiaTensor(S.RC[e].IITW, S.RC[e].IITB, S.RC[e].T)
 
 		// Clear force/torque accumulator
 		newFGs := make([]ForceGen, 0, len(*S.MC[e].FGs)-len(expiredFGs))
@@ -152,9 +152,9 @@ func updateTransformMatrix(m *M4, p *V3, o *Q) {
 }
 
 // update the inverse inertia tensor in world space coordinates (tw) using
-// the inverse inertia tensor in body space coordinates (tb),
-// the transform matrix (tm) and the orientation (o)
-func updateInertiaTensor(tw, tb *M3, tm *M4, o *Q) {
+// the inverse inertia tensor in body space coordinates (tb) and
+// the transform matrix (tm)
+func updateInertiaTensor(tw, tb *M3, tm *M4) {
 	t4 := tm[0]*tb[0] + tm[1]*tb[3] + tm[2]*tb[6]
 	t9 := tm[0]*tb[1] + tm[1]*tb[4] + tm[2]*tb[7]
 	t14 := tm[0]*tb[2] + tm[1]*tb[5] + tm[2]*tb[8]
