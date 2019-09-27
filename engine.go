@@ -19,7 +19,6 @@ package tesseract
 
 import (
 	"encoding/json"
-	"errors"
 	"time"
 
 	xrand "golang.org/x/exp/rand"
@@ -141,15 +140,12 @@ func (e *GameEngine) handleUserActions(rand *xrand.Rand) error {
 	default:
 		return nil
 	case action := <-e.actionChan:
-		log.Debug("handleUserActions", "e.actionChan", e.actionChan, "action", action)
-		//log.Debug("handleUserActions", "a", a)
 		actions = make([]Action, 0)
 		actions = append(actions, action)
 		for i := 0; i < maxActionsPerLoop; i++ {
 			select {
 			default:
 				for _, a := range actions {
-					log.Debug("handleUserActions", "a", a)
 					err := a.Execute()
 					if err != nil {
 						return err
@@ -161,5 +157,7 @@ func (e *GameEngine) handleUserActions(rand *xrand.Rand) error {
 			}
 		}
 	}
-	return errors.New("wtf")
+
+	//return errors.New("wtf")
+	return nil
 }

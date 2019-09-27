@@ -29,7 +29,7 @@ func DevScene1() {
 
 	// Mass scalar value is kilogram (kg)
 	var m0 float64
-	m0 = 42000.0
+	m0 = 4200.0
 	S.MassC[e0] = &m0
 
 	// X,Y,Z position in kilometers (km) from origin
@@ -38,7 +38,7 @@ func DevScene1() {
 	// TODO: add ship class entry for e0
 	S.SCC[e0] = &WarmJet{}
 
-	ic := InertiaTensorCuboid(m0, 14, 6, 30)
+	ic := InertiaTensorCuboid(m0, 10, 10, 10)
 	ic.Inverse()
 	log.Debug("devscene", "ic", ic)
 	*S.RC[e0].IITB = *ic

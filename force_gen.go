@@ -31,6 +31,7 @@ type ForceGen interface {
 	IsExpired() bool
 }
 
+// TODO: apply same drag function on rotation
 type DragForceGen struct {
 	DragCoef1, DragCoef2 float64
 }
@@ -56,17 +57,29 @@ func (d *DragForceGen) IsExpired() bool {
 
 // For e.g. center-of-mass-aligned engines
 type ThrustForceGen struct {
-	thrust *V3
-	// TODO: think about temporary and persistent thrust
-	//expiry float64
+	thrust   float64
+	timeLeft float64
 }
 
-func (t *ThrustForceGen) UpdateForce(e Id, duration float64) (*V3, *V3) {
-	return new(V3).MulScalar(t.thrust, duration), nil
+func (t *ThrustForceGen) UpdateForce(e Id, elapsed float64) (*V3, *V3) {
+	log.Debug("ThrustForceGen.UpdateForce", "t", t.thrust)
+	var f float64
+	if t.timeLeft > elapsed {
+		f = t.thrust * elapsed
+		t.timeLeft -= elapsed
+	} else {
+		f = t.thrust * t.timeLeft
+		t.timeLeft = 0
+	}
+
+	// align thrust force to orientation
+	// rotate the forward axis with e's orientation, then scalar mult force
+	fv := S.OC[e].ForwardVector()
+	return fv.MulScalar(fv, f), nil
 }
 
 func (t *ThrustForceGen) IsExpired() bool {
-	return false
+	return t.timeLeft == 0
 }
 
 // For Ship turning
@@ -76,7 +89,7 @@ type TurnForceGen struct {
 }
 
 func (t *TurnForceGen) UpdateForce(e Id, elapsed float64) (*V3, *V3) {
-	log.Debug("TurnForceGen.UpdateForce", "tq", *t.torque)
+	//log.Debug("TurnForceGen.UpdateForce", "tq", *t.torque)
 	if t.timeLeft > elapsed {
 		t.timeLeft -= elapsed
 		return nil, new(V3).MulScalar(t.torque, elapsed)

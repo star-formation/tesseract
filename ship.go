@@ -110,14 +110,14 @@ type Engine interface {
 type WarmJet struct{}
 
 const (
-	massBaseWarmjet = 30000 // kg
+	massBaseWarmjet = 42000 // kg
 
 	volumeBaseWarmjet       = 60 // m3
 	packedVolumeBaseWarmjet = 60 // m3
 
-	cmgTorqueCapWarmjetX = 100000.0 // Newton (N)
-	cmgTorqueCapWarmjetY = 100000.0
-	cmgTorqueCapWarmjetZ = 100000.0
+	cmgTorqueCapWarmjetX = 1000000.0 // Newton (N)
+	cmgTorqueCapWarmjetY = 1000000.0
+	cmgTorqueCapWarmjetZ = 1000000.0
 
 	hullHPCapWarmjet = 100 // hit points
 

@@ -28,7 +28,6 @@ A good introduction is chapters 2 and 9 in [1].
 References:
 
 [1] Millington, Ian. Game physics engine development (Second Edition). CRC Press, 2010.
-
 [2] https://github.com/idmillington/cyclone-physics/blob/master/include/cyclone/core.h
 
 */
@@ -187,6 +186,14 @@ func (m *M3) Inverse() {
 // 3x4 Matrix
 type M4 [12]float64
 
+func (m *M4) Transform(v *V3) *V3 {
+	return &V3{
+		v.X*m[0] + v.Y*m[1] + v.Z*m[2] + m[3],
+		v.X*m[4] + v.Y*m[5] + v.Z*m[6] + m[7],
+		v.X*m[8] + v.Y*m[9] + v.Z*m[10] + m[11],
+	}
+}
+
 // Quaternion
 type Q struct {
 	R, I, J, K float64
@@ -228,4 +235,12 @@ func (q *Q) AddScaledVector(v *V3, s float64) *Q {
 	q.J += q2.J * 0.5
 	q.K += q2.K * 0.5
 	return q
+}
+
+func (q *Q) ForwardVector() *V3 {
+	return &V3{
+		2 * (q.I*q.K + q.R*q.J),
+		2 * (q.J*q.K - q.R*q.I),
+		1 - 2*(q.I*q.I+q.J*q.J),
+	}
 }

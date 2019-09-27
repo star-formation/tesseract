@@ -51,18 +51,25 @@ func HandleMsg(msg []byte) error {
 	switch j["action"] {
 	case "getGlobalState":
 		return nil
-	case "rotate":
+	case "rotate", "engine":
 		e, err := strconv.ParseUint(j["entity"].(string), 10, 64)
 		if err != nil {
 			return err
 		}
 		params := j["params"].(map[string]interface{})
 		duration := params["duration"].(float64)
-		torque := params["torque"].(map[string]interface{})
-		x := torque["x"].(float64)
-		y := torque["y"].(float64)
-		z := torque["z"].(float64)
-		ar := &ActionRotate{Id(e), &V3{x, y, z}, duration}
+
+		var ar Action
+		if j["action"] == "rotate" {
+			torque := params["force"].(map[string]interface{})
+			x := torque["x"].(float64)
+			y := torque["y"].(float64)
+			z := torque["z"].(float64)
+			ar = &ActionRotate{Id(e), &V3{x, y, z}, duration}
+		} else {
+			f := params["force"].(float64)
+			ar = &ActionEngineThrust{Id(e), f, duration}
+		}
 		GE.actionChan <- ar
 	default:
 		return fmt.Errorf("unsupported message %v", string(msg))
@@ -84,5 +91,16 @@ func (a *ActionRotate) Execute() error {
 	}
 
 	S.AddForceGen(a.entity, &TurnForceGen{a.t, a.duration})
+	return nil
+}
+
+type ActionEngineThrust struct {
+	entity   Id
+	thrust   float64
+	duration float64
+}
+
+func (a *ActionEngineThrust) Execute() error {
+	S.AddForceGen(a.entity, &ThrustForceGen{a.thrust, a.duration})
 	return nil
 }
