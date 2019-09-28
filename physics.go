@@ -76,7 +76,6 @@ func (p *Physics) Update(elapsed float64) error {
 			}
 		}
 
-		log.Debug("physics.Update", "linearForce", linearForce)
 		// update linear acceleration from forces
 		inverseMass := float64(1) / *(S.MassC[e])
 		lastAcc := new(V3)
@@ -118,7 +117,7 @@ func (p *Physics) Update(elapsed float64) error {
 		}
 		*S.MC[e].FGs = newFGs
 
-		log.Debug("physics.Update", "v", S.MC[e].V, "r", S.RC[e].R)
+		log.Debug("physics.Update", "p", S.PC[e], "v", S.MC[e].V, "o", S.OC[e], "r", S.RC[e].R)
 	}
 
 	return nil

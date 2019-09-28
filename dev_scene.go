@@ -39,8 +39,9 @@ func DevScene1() {
 	S.SCC[e0] = &WarmJet{}
 
 	ic := InertiaTensorCuboid(m0, 10, 10, 10)
+	log.Debug("DevScene", "IC", ic)
 	ic.Inverse()
-	log.Debug("devscene", "ic", ic)
+	log.Debug("DevScene", "IC", ic)
 	*S.RC[e0].IITB = *ic
 	//log.Debug("devscene", "S.ICB[e0]", S.ICB[e0])
 	//S.AddForceGen(e0, &ThrustForceGen{&V3{m0 * g0 * 0.01, 0, 0}})
