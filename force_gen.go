@@ -62,7 +62,7 @@ type ThrustForceGen struct {
 }
 
 func (t *ThrustForceGen) UpdateForce(e Id, elapsed float64) (*V3, *V3) {
-	log.Debug("ThrustForceGen.UpdateForce", "t", t.thrust)
+	//log.Debug("ThrustForceGen.UpdateForce", "t", t.thrust)
 	var f float64
 	if t.timeLeft > elapsed {
 		f = t.thrust * elapsed

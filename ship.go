@@ -22,8 +22,8 @@ package tesseract
 // by a set of constants.
 //
 // Note that ship classes are not OOP classes and there is no inheritance or
-// instancing of ship classes.  Rather, each ship class is encoded as
-// a set of constants and an empty struct implements the ShipClass interface.
+// instancing.  Rather, each ship class is encoded as a set of constants and
+// an empty struct implements the ShipClass interface.
 //
 // This enables other packages to read immutable ship params while
 // game state components store dynamic parameters like ship mass and
@@ -36,15 +36,18 @@ package tesseract
 // Note that a parameter's real-time value can be lower than its base value.
 // An example of this is a ship without any modules or cargo flown by a player
 // with trained aerodynamic skills - the ship's effective drag would be lower
-// than the base hull value.
+// than the hull's base value.
 type ShipClass interface {
 	// The mass in kilograms (kg) of the ship when no modules are attached
 	// and nothing is in the cargo bay.
 	MassBase() float64
 
-	// Volume in cubic meters (m^3) of ship excluding any external modules.
+	// The radius in meters (m) of the ship's bounding sphere.
+	BoundingSphereRadius() float64
+
+	// The ship volume in cubic meters (m^3) excluding any external modules.
 	VolumeBase() float64
-	// The volume of the ship when packed inside a cargo bay or other storage.
+	// The ship volume when packed inside a cargo bay or other storage.
 	PackedVolumeBase() float64
 
 	// Control Moment Gyroscope Max Torque in newtons (N).
@@ -55,13 +58,13 @@ type ShipClass interface {
 	// without changing velocity.
 	//
 	// This is a simple mechanism to enable the physics engine to simulate
-	// "turning inertia" realistically - players will notice their ships
+	// "turning inertia" realistically; players will notice their ships
 	// turn slower when storing heavy cargo or fielding heavy modules
 	// like armor plates.
 	//
 	// By using a 3D vector we can configure ships that turn faster "up"/"down"
 	// (pitch) than "left"/"right" (yaw), making banked turns useful
-	// even in zero-g / vacuum (https://en.wikipedia.org/wiki/Banked_turn).
+	// even in zero-g/vacuum (https://en.wikipedia.org/wiki/Banked_turn).
 	CMGTorqueCap() V3
 
 	// Hull/Armor/Shield Capacity in hit points.
@@ -73,7 +76,7 @@ type ShipClass interface {
 	CargoBayCap() float64
 
 	// Hull Aerodynamic Lift and Drag Coefficients (dimensionless quantity).
-	// This is the base lift/drag of the ship hull prior to taking into account
+	// This is the base lift/drag of the ship hull before taking into account
 	// modules that affect lift/drag and aerodynamic player skills.
 	// TODO: split into subsonic, supersonic, hypersonic
 	AeroLiftBase() float64
@@ -97,7 +100,7 @@ type ShipClass interface {
 
 	// Each ship class also has one engine module slot, one reactor slot and
 	// one mainframe slot.  For now this is hard-coded in the gameplay/ship
-	// system of the game engine as those module slot counts are singular.
+	// system of the game engine.
 
 	// TODO: ship bonuses
 }
@@ -112,12 +115,14 @@ type WarmJet struct{}
 const (
 	massBaseWarmjet = 42000 // kg
 
+	radiusWarmjet = 30 // m
+
 	volumeBaseWarmjet       = 60 // m3
 	packedVolumeBaseWarmjet = 60 // m3
 
-	cmgTorqueCapWarmjetX = 1000000.0 // Newton (N)
-	cmgTorqueCapWarmjetY = 1000000.0
-	cmgTorqueCapWarmjetZ = 1000000.0
+	cmgTorqueCapXWarmjet = 1000000.0 // Newton (N)
+	cmgTorqueCapYWarmjet = 1000000.0
+	cmgTorqueCapZWarmjet = 1000000.0
 
 	hullHPCapWarmjet = 100 // hit points
 
@@ -133,11 +138,12 @@ const (
 	// TODO: add shape / size
 )
 
-func (s *WarmJet) MassBase() float64         { return massBaseWarmjet }
-func (s *WarmJet) VolumeBase() float64       { return volumeBaseWarmjet }
-func (s *WarmJet) PackedVolumeBase() float64 { return packedVolumeBaseWarmjet }
+func (s *WarmJet) MassBase() float64             { return massBaseWarmjet }
+func (s *WarmJet) BoundingSphereRadius() float64 { return radiusWarmjet }
+func (s *WarmJet) VolumeBase() float64           { return volumeBaseWarmjet }
+func (s *WarmJet) PackedVolumeBase() float64     { return packedVolumeBaseWarmjet }
 func (s *WarmJet) CMGTorqueCap() V3 {
-	return V3{cmgTorqueCapWarmjetX, cmgTorqueCapWarmjetY, cmgTorqueCapWarmjetZ}
+	return V3{cmgTorqueCapXWarmjet, cmgTorqueCapYWarmjet, cmgTorqueCapZWarmjet}
 }
 func (s *WarmJet) HullHPCap() float64    { return hullHPCapWarmjet }
 func (s *WarmJet) CargoBayCap() float64  { return cargoBayCapWarmjet }

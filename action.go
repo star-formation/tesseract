@@ -21,8 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
-
-	"github.com/ethereum/go-ethereum/log"
 	//"github.com/ethereum/go-ethereum/log"
 )
 
@@ -42,7 +40,7 @@ type Action interface {
 // in diff layers.
 // TODO: for dev/test we use a simple JSON schema
 func HandleMsg(msg []byte) error {
-	log.Debug("HandleMsg", "msg", string(msg))
+	//log.Debug("HandleMsg", "msg", string(msg))
 	var j map[string]interface{}
 	err := json.Unmarshal(msg, &j)
 	if err != nil {
