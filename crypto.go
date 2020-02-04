@@ -22,23 +22,9 @@ import (
 	"encoding/binary"
 
 	xrand "golang.org/x/exp/rand"
-
-	nacl "github.com/kevinburke/nacl"
-	//naclbox "github.com/kevinburke/nacl/box"
 )
 
-// TODO: move to separate file / package
-
-type Tx struct {
-	Addr   []byte
-	PubKey nacl.Key
-	Action []byte
-	SeqNum uint64
-}
-
-// NOTE: Secure Merkle trees must use different hash functions for leaves and internal nodes to avoid type confusion based attacks [X]
-
-// [X] https://bitslog.com/2018/06/09/leaf-node-weakness-in-bitcoin-merkle-tree-design/
+//naclbox "github.com/kevinburke/nacl/box"
 
 /* TODO: this is for testing
 
@@ -48,6 +34,7 @@ type Tx struct {
    See https://dfinity.org/static/dfinity-consensus-0325c35128c72b42df7dd30c22c41208.pdf
    and https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md
 */
+
 func RandBytes() ([32]byte, error) {
 	return sha256.Sum256([]byte("hello world\n")), nil
 }

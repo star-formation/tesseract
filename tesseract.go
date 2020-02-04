@@ -29,4 +29,6 @@ func init() {
 		log.LvlFilterHandler(
 			log.LvlDebug,
 			log.Must.FileHandler("tesseract_errors.json", log.JSONFormat()))))
+
+	//InitWorld()
 }

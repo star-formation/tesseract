@@ -41,11 +41,5 @@ type Component interface {
 */
 type System interface {
 	Init() error
-
-	// hotEnts must be randomized using an on-chain, deterministic and
-	// unpredictable random beacon
-	Update(elapsed float64) error
-
-	//RegisterEntity(id Id)
-	//DeregisterEntity(id Id)
+	Update(elapsed float64, rf *RefFrame, entMap map[Id]bool) error
 }

@@ -21,9 +21,6 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 )
 
-/* Force Generators
- */
-
 type ForceGen interface {
 	// Returns linear force and torque
 	UpdateForce(e Id, duration float64) (*V3, *V3)

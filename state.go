@@ -21,14 +21,12 @@ import (
 	"encoding/json"
 )
 
-// Dev/Test global in-memory game state.  Used for dev/tests to simplify
-// rapid iteration to data structures and game design/logic.
+// Dev/Test global in-memory game state.  Used to simplify
+// rapid iteration of data structures and game design/logic.
 
-// This is especially important as the state will go through many iterations
-// before it's clear to best encode optimize it for merkle trees/proofs in
-// the outer blockchain layer.
-var S *State
-
+// The state will likely go through many iterations before it's clear
+// how to best encode and optimize it for merkle trees/proofs
+// in the outer blockchain layer.
 type Mobile struct {
 	V   *V3         // velocity
 	FGs *[]ForceGen // force/torque generators
@@ -39,22 +37,16 @@ type Rotational struct {
 	R    *V3 // Rotation X,Y,Z 3D vector
 	IITB *M3 // Inverse Inertia Tensor Body space/coordinates
 	IITW *M3 // Inverse Inertia Tensor World space/coordinates
-	T    *M4 // Transform 3x4 matrix transforming body space/coordinates to world
+	T    *M4 // 3x4 matrix transforming body space/coordinates to world
 }
 
-// TODO: JSON tags and encoding for entire state.  Easiest during dev/test.
-//       Replaced by compact, fast binary encoding for prod.
+var S *State
+
 type State struct {
-	// Game Engine State
 	MB *MessageBus
 	AB *MessageBus
 
-	Ents    map[Id]bool
-	HotEnts map[Id]bool
-
-	//RefFrames []*RefFrame
-	//RFC map[Id]*RefFrame
-	//HotRefFrames []*RefFrame
+	EntsInFrames map[*RefFrame]map[Id]bool
 
 	//
 	// Physics Components
@@ -105,8 +97,7 @@ func ResetState() {
 	channels2 := make([]chan<- []byte, 0)
 	s.AB = &MessageBus{channels2}
 
-	s.Ents = make(map[Id]bool, 10)
-	s.HotEnts = make(map[Id]bool, 10)
+	s.EntsInFrames = make(map[*RefFrame]map[Id]bool, 1)
 
 	s.MassC = make(map[Id]*float64, 1)
 	s.PC = make(map[Id]*V3, 1)
@@ -115,6 +106,8 @@ func ResetState() {
 
 	s.MC = make(map[Id]Mobile, 1)
 	s.RC = make(map[Id]Rotational, 1)
+
+	s.SRC = make(map[Id]*float64, 1)
 
 	s.SCC = make(map[Id]ShipClass, 1)
 

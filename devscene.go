@@ -17,8 +17,7 @@
 */
 package tesseract
 
-import "github.com/ethereum/go-ethereum/log"
-
+/*
 func DevScene1() {
 	ResetState()
 
@@ -55,3 +54,4 @@ func DevScene1() {
 
 	go GE.Loop()
 }
+*/

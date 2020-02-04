@@ -17,23 +17,25 @@
 */
 package tesseract
 
-// Ship classes are analogous to classical navy ship classes
-// (https://en.wikipedia.org/wiki/Ship_class) and are uniquely identified
-// by a set of constants.
+// Ship classes are analogous to classical navy ship classes.
+// See https://en.wikipedia.org/wiki/Ship_class.
 //
-// Note that ship classes are not OOP classes and there is no inheritance or
+// Each class is uniquely identified by a set of constants defining physical
+// and gameplay parameters.
+//
+// Ship classes are not OOP classes and there is no inheritance or
 // instancing.  Rather, each ship class is encoded as a set of constants and
 // an empty struct implements the ShipClass interface.
 //
-// This enables other packages to read immutable ship params while
+// This enables other packages to read immutable ship parameters while
 // game state components store dynamic parameters like ship mass and
 // hull/armor/shield hit points.
 //
-// As per the naming convention, "Base" and "Cap" denotes a value intrinsic
-// to the ship class - before effects are applied from any attached modules
+// Naming convention: "Base" and "Cap" denotes a value intrinsic
+// to the ship class before effects are applied from any attached modules
 // or player character skills.  "Base" and "Cap" are always suffixes.
 //
-// Note that a parameter's real-time value can be lower than its base value.
+// A parameter's real-time value can be lower than its base value.
 // An example of this is a ship without any modules or cargo flown by a player
 // with trained aerodynamic skills - the ship's effective drag would be lower
 // than the hull's base value.
@@ -50,7 +52,7 @@ type ShipClass interface {
 	// The ship volume when packed inside a cargo bay or other storage.
 	PackedVolumeBase() float64
 
-	// Control Moment Gyroscope Max Torque in newtons (N).
+	// Control Moment Gyroscope (CMG) Max Torque in newtons (N).
 	//
 	// This is a built-in, non-modular engine situated at the ship's
 	// center of mass.  The CMG has a single function: generate torque around
@@ -75,16 +77,16 @@ type ShipClass interface {
 	// Cargo bay capacity in cubic meters (m^3).
 	CargoBayCap() float64
 
-	// Hull Aerodynamic Lift and Drag Coefficients (dimensionless quantity).
+	// Hull Aerodynamic Lift and Drag Coefficients (dimensionless quantities).
 	// This is the base lift/drag of the ship hull before taking into account
 	// modules that affect lift/drag and aerodynamic player skills.
 	// TODO: split into subsonic, supersonic, hypersonic
 	AeroLiftBase() float64
 	AeroDragBase() float64
 
-	// External hard points and internal module slots are the main mechanism
-	// for ship modularity; the exact counts of each type of module slot
-	// is a crucial part of the balance for each ship class.
+	// External hard points and internal module slots are the mechanisms
+	// for ship modularity.  The count of each type is a major part of the
+	// design, power and balance of each ship class.
 
 	// Hard Point integer count.
 	// Each Hard Point can attach one external module such as a weapon module.
@@ -98,9 +100,10 @@ type ShipClass interface {
 	// Each internal low power slot can fit one low-powered module.
 	LowPowerSlots() uint8
 
-	// Each ship class also has one engine module slot, one reactor slot and
-	// one mainframe slot.  For now this is hard-coded in the gameplay/ship
-	// system of the game engine.
+	// Each ship class also has dedicated module slots for certain types of
+	// modules.  For now these are hard-coded in the gameplay/ship
+	// system of the game engine and consists of one slot for the ship's
+	// main engine, one for a reactor and one for a mainframe.
 
 	// TODO: ship bonuses
 }
@@ -135,7 +138,7 @@ const (
 	highPowerSlotsWarmjet = 1
 	lowPowerSlotsWarmjet  = 1
 
-	// TODO: add shape / size
+	// TODO: shape / size
 )
 
 func (s *WarmJet) MassBase() float64             { return massBaseWarmjet }

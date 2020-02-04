@@ -21,8 +21,6 @@ import (
 	"encoding/json"
 	"time"
 
-	xrand "golang.org/x/exp/rand"
-
 	"github.com/ethereum/go-ethereum/log"
 )
 
@@ -50,68 +48,49 @@ const (
 	maxActionsPerLoop = 10
 )
 
-// The Engine manages entities, components and systems and handles
-// much of the core operations of the game engine.
-//
-// It is intentionally somewhat of a monolith / god object during development
-// to avoid premature abstractions.
-//
-// Long term we want to abstract out functionality into separate modules for
-// better SoC, but the engine will likely retain a considerable amount of
-// core functions.
-var GE *GameEngine
-
 type GameEngine struct {
 	systems    []System
 	actionChan chan Action
 }
 
-func (e *GameEngine) Loop() error {
+var GE *GameEngine
+
+func (ge *GameEngine) Loop() error {
 	var err error
 	var elapsed time.Duration
-	var start, last, now time.Time
+	var start, last, t time.Time
 
-	var r *xrand.Rand
 	var j []byte
-	// debug
-	debug := 0
 
 	start = time.Now()
 	last = start
+
+	debug := 0
 	for err == nil {
 		debug++
-		now = time.Now()
-		elapsed = now.Sub(last)
+		t = time.Now()
+		elapsed = t.Sub(last)
 		//log.Debug("engine.Loop", "c", debug, "run", time.Now().Sub(start))
 
 		if elapsed < loopTarget {
 			time.Sleep(loopTarget - elapsed)
-			elapsed = loopTarget
 			last = time.Now()
+			elapsed = t.Sub(last)
 		} else {
-			last = now
+			last = t
 		}
 
-		r, err = NewRand()
+		err = ge.update(elapsed.Seconds())
 		if err != nil {
 			break
 		}
 
-		err = e.updateHotEnts(r, elapsed.Seconds())
+		err = ge.handleUserActions()
 		if err != nil {
 			break
 		}
 
-		//err = e.processTimers(r)
-		//if err != nil {
-		//    break
-		//}
-
-		err = e.handleUserActions(r)
-		if err != nil {
-			break
-		}
-
+		// TODO: per client
 		j, err = json.Marshal(S)
 		if err != nil {
 			break
@@ -119,22 +98,25 @@ func (e *GameEngine) Loop() error {
 		S.MB.Post(j)
 	}
 
-	// TODO: error handling
 	log.Info("engine.Loop", "err", err)
 	return err
 }
 
-func (e *GameEngine) updateHotEnts(r *xrand.Rand, elapsed float64) error {
-	for _, sys := range e.systems {
-		err := sys.Update(elapsed)
-		if err != nil {
-			return err
+// TODO: update only hot ents/frames
+// TODO: derive the update order for ref frames and ents from random beacon
+func (ge *GameEngine) update(elapsed float64) error {
+	for rf, entMap := range S.EntsInFrames {
+		for _, sys := range ge.systems {
+			err := sys.Update(elapsed, rf, entMap)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
 }
 
-func (e *GameEngine) handleUserActions(rand *xrand.Rand) error {
+func (e *GameEngine) handleUserActions() error {
 	var actions []Action
 	select {
 	default:
@@ -142,7 +124,7 @@ func (e *GameEngine) handleUserActions(rand *xrand.Rand) error {
 	case action := <-e.actionChan:
 		actions = make([]Action, 0)
 		actions = append(actions, action)
-		for i := 0; i < maxActionsPerLoop; i++ {
+		for i := 1; i < maxActionsPerLoop; i++ {
 			select {
 			default:
 				for _, a := range actions {

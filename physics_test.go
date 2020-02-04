@@ -17,10 +17,7 @@
 */
 package tesseract
 
-import (
-	"testing"
-)
-
+/*
 func TestPhysics(t *testing.T) {
 	engine := setup()
 	engine.Loop()
@@ -44,7 +41,7 @@ func TestTorque(t *testing.T) {
 	tq := S.TorqueAtPoint(e0, grid, lf, worldPoint)
 	log.Debug("TestTorque", "lfm", lf.Magnitude(), "t", tq, "tm", tq.Magnitude())
 }
-*/
+
 
 func setup() *Engine {
 	ResetState()
@@ -84,3 +81,4 @@ func setup() *Engine {
 
 	return engine
 }
+*/

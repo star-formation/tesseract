@@ -34,10 +34,25 @@ References:
 
 const (
 	DBL_EPSILON = 2.2204460492503131E-16
+
+	// acceptable tolerance of errors of float64 calculations compared to
+	// analytical or precalculated solutions
+	tolerance = 0.000000000000001
+)
+
+var (
+	KHat = V3{0, 0, 1}
 )
 
 type V3 struct {
 	X, Y, Z float64
+}
+
+func (v *V3) Set(a *V3) *V3 {
+	v.X = a.X
+	v.Y = a.Y
+	v.Z = a.Z
+	return v
 }
 
 func (v *V3) Add(a, b *V3) *V3 {
@@ -252,4 +267,12 @@ func (q *Q) ForwardVector() *V3 {
 		2 * (q.J*q.K - q.R*q.I),
 		1 - 2*(q.I*q.I+q.J*q.J),
 	}
+}
+
+func RadToDeg(radians float64) float64 {
+	return radians * (180 / math.Pi)
+}
+
+func DegToRad(degrees float64) float64 {
+	return degrees * (math.Pi / 180)
 }

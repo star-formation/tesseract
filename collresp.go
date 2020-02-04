@@ -16,26 +16,3 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 package tesseract
-
-import (
-	"math"
-)
-
-type Atmosphere struct {
-	Height, ScaleHeight float64
-	PressureSeaLevel    float64
-}
-
-// https://en.wikipedia.org/wiki/Scale_height
-func (a *Atmosphere) PressureAtAltitude(alt float64) float64 {
-	// TODO: handle increase pressure below sea level
-	if alt < 0 {
-		return a.PressureSeaLevel
-	}
-
-	if alt > a.Height {
-		return 0
-	}
-
-	return a.PressureSeaLevel * math.Exp(-(alt / a.ScaleHeight))
-}

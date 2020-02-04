@@ -26,6 +26,9 @@ const (
 
 	linearDamping  = float64(1.0)
 	angularDamping = float64(1.0)
+
+	GravitationalConstant = 6.674e-11
+	MUEarth               = 3.986004418e14
 )
 
 // Physics Engine
@@ -55,70 +58,87 @@ func (p *Physics) Init() error {
 	return nil
 }
 
-func (p *Physics) Update(elapsed float64) error {
-	// TODO: split into functions and loop over all ents _for each_ function
-	for e, _ := range S.HotEnts {
-		// update force generators
-		linearForce, torque := new(V3), new(V3)
-		expiredFGs := make(map[int]bool, 0)
-		for i, fg := range *S.MC[e].FGs {
-			lf, t := fg.UpdateForce(e, elapsed)
-			if lf != nil {
-				linearForce.Add(linearForce, lf)
-			}
-			if t != nil {
-				torque.Add(torque, t)
-			}
-			if fg.IsExpired() {
-				expiredFGs[i] = true
-			}
+func (p *Physics) Update(elapsed float64, rf *RefFrame, ents map[Id]bool) error {
+	for e, _ := range ents {
+		// TODO: proper component/system membership test
+		if S.MC[e] == (Mobile{}) {
+			continue
 		}
+		// TODO: update either motion or orbit
+		updateMotion(elapsed, rf, e)
+		// updateOrbit(elapsed, rf, e)
 
-		// update linear acceleration from forces
-		inverseMass := float64(1) / *(S.MassC[e])
-		lastAcc := new(V3)
-		lastAcc.AddScaledVector(linearForce, inverseMass)
+	}
 
-		// update linear velocity
-		S.MC[e].V.AddScaledVector(lastAcc, elapsed)
-
-		// update angular acceleration from torques
-		angularAcc := S.RC[e].IITW.Transform(torque)
-
-		// update angular velocity
-		S.RC[e].R.AddScaledVector(angularAcc, elapsed)
-
-		// apply damping (universal)
-		S.MC[e].V.MulScalar(S.MC[e].V, math.Pow(linearDamping, elapsed))
-		S.RC[e].R.MulScalar(S.RC[e].R, math.Pow(angularDamping, elapsed))
-
-		// update linear position (V3.AddScaledVector)
-		S.PC[e].AddScaledVector(S.MC[e].V, elapsed)
-
-		// update angular position (Q.AddScaledVector)
-		S.OC[e].AddScaledVector(S.RC[e].R, elapsed)
-
-		// normalize orientation
-		S.OC[e].Normalise()
-
-		updateTransformMatrix(S.RC[e].T, S.PC[e], S.OC[e])
-
-		// update inverse inertia tensor in world coordinates
-		updateInertiaTensor(S.RC[e].IITW, S.RC[e].IITB, S.RC[e].T)
-
-		// Clear force/torque accumulator
-		newFGs := make([]ForceGen, 0, len(*S.MC[e].FGs)-len(expiredFGs))
-		for i, fg := range *S.MC[e].FGs {
-			if !expiredFGs[i] {
-				newFGs = append(newFGs, fg)
-			}
-		}
-		*S.MC[e].FGs = newFGs
-
-		//log.Debug("physics.Update", "p", S.PC[e], "v", S.MC[e].V, "o", S.OC[e], "r", S.RC[e].R)
+	for e, _ := range ents {
+		moveEntity(e, rf, rf.Parent)
 	}
 
 	return nil
+}
+
+func updateOrbit(elapsed float64, rf *RefFrame, e Id) {
+}
+
+func updateMotion(elapsed float64, rf *RefFrame, e Id) {
+	// update force generators
+	linearForce, torque := new(V3), new(V3)
+	expiredFGs := make(map[int]bool, 0)
+	for i, fg := range *S.MC[e].FGs {
+		lf, t := fg.UpdateForce(e, elapsed)
+		if lf != nil {
+			linearForce.Add(linearForce, lf)
+		}
+		if t != nil {
+			torque.Add(torque, t)
+		}
+		if fg.IsExpired() {
+			expiredFGs[i] = true
+		}
+	}
+
+	// update linear acceleration from forces
+	inverseMass := float64(1) / *(S.MassC[e])
+	lastAcc := new(V3)
+	lastAcc.AddScaledVector(linearForce, inverseMass)
+
+	// update linear velocity
+	S.MC[e].V.AddScaledVector(lastAcc, elapsed)
+
+	// update angular acceleration from torques
+	angularAcc := S.RC[e].IITW.Transform(torque)
+
+	// update angular velocity
+	S.RC[e].R.AddScaledVector(angularAcc, elapsed)
+
+	// apply damping (universal)
+	S.MC[e].V.MulScalar(S.MC[e].V, math.Pow(linearDamping, elapsed))
+	S.RC[e].R.MulScalar(S.RC[e].R, math.Pow(angularDamping, elapsed))
+
+	// update linear position (V3.AddScaledVector)
+	S.PC[e].AddScaledVector(S.MC[e].V, elapsed)
+
+	// update angular position (Q.AddScaledVector)
+	S.OC[e].AddScaledVector(S.RC[e].R, elapsed)
+
+	// normalize orientation
+	S.OC[e].Normalise()
+
+	updateTransformMatrix(S.RC[e].T, S.PC[e], S.OC[e])
+
+	// update inverse inertia tensor in world coordinates
+	updateInertiaTensor(S.RC[e].IITW, S.RC[e].IITB, S.RC[e].T)
+
+	// Clear force/torque accumulator
+	newFGs := make([]ForceGen, 0, len(*S.MC[e].FGs)-len(expiredFGs))
+	for i, fg := range *S.MC[e].FGs {
+		if !expiredFGs[i] {
+			newFGs = append(newFGs, fg)
+		}
+	}
+	*S.MC[e].FGs = newFGs
+
+	//log.Debug("physics.Update", "p", S.PC[e], "v", S.MC[e].V, "o", S.OC[e], "r", S.RC[e].R)
 }
 
 // TODO: check inertia tensor functions and cuboid tensor for Y axis
