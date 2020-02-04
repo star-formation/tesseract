@@ -28,7 +28,9 @@ const (
 	angularDamping = float64(1.0)
 
 	GravitationalConstant = 6.674e-11
-	MUEarth               = 3.986004418e14
+
+	MUEarth = 3.986004418e14
+	REarth  = 6378100.0
 )
 
 // Physics Engine

@@ -18,6 +18,7 @@
 package tesseract
 
 import (
+	"fmt"
 	"math"
 	"testing"
 )
@@ -30,14 +31,23 @@ type orbTest struct {
 }
 
 func TestOrbitalElementConv(t *testing.T) {
-	re := 6378100.0
 	case2 := orbTest{
-		"foo",
-		&V3{re + 600.0*1000, 0.0, 50.0},
+		"earth1",
+		&V3{REarth + 600.0*1000, 0.0, 50.0},
 		&V3{0.0, 6.5 * 1000, 0.0},
 		MUEarth,
 		&OE{0.26035023023005477, 5.536635637306466e+06, 7.165289638066952e-06, -1.5707963267948966, -1.5707963267948966, -2049.9813051575525, 3.141592653589793}, // TODO
 	}
+
+	/*
+		case3 := orbTest{
+			"ISS",
+			&V3{},
+			&V3{},
+			MUEarth,
+			&OE{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
+		}
+	*/
 
 	cases := []orbTest{
 		case2,
@@ -64,4 +74,21 @@ func TestOrbitalElementConv(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOrbitalElementConvISS(t *testing.T) {
+	ISSOE := &OE{
+		E: 0.0005040,          // dimensionless
+		S: REarth + 422*1000,  // m
+		I: DegToRad(51.6420),  // radians
+		L: DegToRad(286.4848), // radians
+		A: DegToRad(230.6842), // radians
+		T: DegToRad(129.3862), // radians
+	}
+
+	pos, vel := OEToCart(ISSOE, MUEarth)
+	fmt.Printf("pos: %v\nvel: %v\nvelMag: %v\n", pos, vel, vel.Magnitude())
+
+	o := CartToOE(pos, vel, MUEarth)
+	o.Debug()
 }
