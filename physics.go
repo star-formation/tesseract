@@ -21,18 +21,6 @@ import (
 	"math"
 )
 
-const (
-	g0 = 9.80665
-
-	linearDamping  = float64(1.0)
-	angularDamping = float64(1.0)
-
-	GravitationalConstant = 6.674e-11
-
-	MUEarth = 3.986004418e14
-	REarth  = 6378100.0
-)
-
 // Physics Engine
 type Physics struct {
 }
@@ -60,7 +48,7 @@ func (p *Physics) Init() error {
 	return nil
 }
 
-func (p *Physics) Update(elapsed float64, rf *RefFrame, ents map[Id]bool) error {
+func (p *Physics) Update(worldTime, elapsed float64, rf *RefFrame, ents map[Id]bool) error {
 	for e, _ := range ents {
 		// TODO: proper component/system membership test
 		if S.MC[e] == (Mobile{}) {
@@ -72,9 +60,7 @@ func (p *Physics) Update(elapsed float64, rf *RefFrame, ents map[Id]bool) error 
 
 	}
 
-	for e, _ := range ents {
-		moveEntity(e, rf, rf.Parent)
-	}
+	// TODO: update ref frames
 
 	return nil
 }
@@ -121,12 +107,12 @@ func updateMotion(elapsed float64, rf *RefFrame, e Id) {
 	S.PC[e].AddScaledVector(S.MC[e].V, elapsed)
 
 	// update angular position (Q.AddScaledVector)
-	S.OC[e].AddScaledVector(S.RC[e].R, elapsed)
+	S.ORIC[e].AddScaledVector(S.RC[e].R, elapsed)
 
 	// normalize orientation
-	S.OC[e].Normalise()
+	S.ORIC[e].Normalise()
 
-	updateTransformMatrix(S.RC[e].T, S.PC[e], S.OC[e])
+	updateTransformMatrix(S.RC[e].T, S.PC[e], S.ORIC[e])
 
 	// update inverse inertia tensor in world coordinates
 	updateInertiaTensor(S.RC[e].IITW, S.RC[e].IITB, S.RC[e].T)
@@ -140,7 +126,7 @@ func updateMotion(elapsed float64, rf *RefFrame, e Id) {
 	}
 	*S.MC[e].FGs = newFGs
 
-	//log.Debug("physics.Update", "p", S.PC[e], "v", S.MC[e].V, "o", S.OC[e], "r", S.RC[e].R)
+	//log.Debug("physics.Update", "p", S.PC[e], "v", S.MC[e].V, "o", S.ORIC[e], "r", S.RC[e].R)
 }
 
 // TODO: check inertia tensor functions and cuboid tensor for Y axis

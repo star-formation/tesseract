@@ -17,13 +17,6 @@
 */
 package tesseract
 
-import (
-	"crypto/sha256"
-	"encoding/binary"
-
-	xrand "golang.org/x/exp/rand"
-)
-
 //naclbox "github.com/kevinburke/nacl/box"
 
 /* TODO: this is for testing
@@ -35,6 +28,7 @@ import (
    and https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md
 */
 
+/*
 func RandBytes() ([32]byte, error) {
 	return sha256.Sum256([]byte("hello world\n")), nil
 }
@@ -55,3 +49,4 @@ func NewRand() (*xrand.Rand, error) {
 	src := xrand.NewSource(u64)
 	return xrand.New(src), nil
 }
+*/

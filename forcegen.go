@@ -69,7 +69,7 @@ func (t *ThrustForceGen) UpdateForce(e Id, elapsed float64) (*V3, *V3) {
 		t.timeLeft = 0
 	}
 
-	fv := S.OC[e].ForwardVector()
+	fv := S.ORIC[e].ForwardVector()
 	return fv.MulScalar(fv, f), nil
 }
 

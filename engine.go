@@ -43,11 +43,6 @@ import (
 
 */
 
-const (
-	loopTarget        = 1000 * time.Millisecond
-	maxActionsPerLoop = 10
-)
-
 type GameEngine struct {
 	systems    []System
 	actionChan chan Action
@@ -58,7 +53,7 @@ var GE *GameEngine
 func (ge *GameEngine) Loop() error {
 	var err error
 	var elapsed time.Duration
-	var start, last, t time.Time
+	var start, last, t0, t1 time.Time
 
 	var j []byte
 
@@ -68,19 +63,21 @@ func (ge *GameEngine) Loop() error {
 	debug := 0
 	for err == nil {
 		debug++
-		t = time.Now()
-		elapsed = t.Sub(last)
+		t0 = time.Now()
+		worldTime := t0.Sub(start)
+		elapsed = t0.Sub(last)
 		//log.Debug("engine.Loop", "c", debug, "run", time.Now().Sub(start))
 
 		if elapsed < loopTarget {
 			time.Sleep(loopTarget - elapsed)
-			last = time.Now()
-			elapsed = t.Sub(last)
+			t1 = time.Now()
+			elapsed = t1.Sub(last)
+			last = t1
 		} else {
-			last = t
+			last = t0
 		}
 
-		err = ge.update(elapsed.Seconds())
+		err = ge.update(worldTime.Seconds(), elapsed.Seconds())
 		if err != nil {
 			break
 		}
@@ -104,10 +101,10 @@ func (ge *GameEngine) Loop() error {
 
 // TODO: update only hot ents/frames
 // TODO: derive the update order for ref frames and ents from random beacon
-func (ge *GameEngine) update(elapsed float64) error {
+func (ge *GameEngine) update(worldTime, elapsed float64) error {
 	for rf, entMap := range S.EntsInFrames {
 		for _, sys := range ge.systems {
-			err := sys.Update(elapsed, rf, entMap)
+			err := sys.Update(worldTime, elapsed, rf, entMap)
 			if err != nil {
 				return err
 			}

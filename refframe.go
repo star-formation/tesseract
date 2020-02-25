@@ -66,42 +66,6 @@ type RefFrame struct {
 	DragCoef1, DragCoef2 float64
 }
 
-// Assumptions:
-// 1. Frames do not rotate.
-// 2. Child frames never share borders with parent frames.
-//
-// TODO: use colldet system
-func moveEntity(e Id, from, to *RefFrame) {
-	switch {
-	case from.Pos != nil:
-		if S.PC[e].SquareMagnitude() <= (from.Radius * from.Radius) {
-			// TODO: check if entering child ref frame
-			return
-		}
-
-		// Moving out from 3D position-based frame
-		S.EntsInFrames[from][e] = false
-		S.EntsInFrames[to][e] = true
-		if to.Pos != nil {
-			// 3D pos to 3D pos
-			S.PC[e] = new(V3).Add(from.Pos, S.PC[e])
-			// TODO: update velocity to new frame
-		} else {
-			// 3D pos to Orbital Params
-			//newPos := new(V3).Add(from.Pos, S.PC[e])
-			// TODO: calc correct velocity
-			//S.OEC[e] =
-		}
-
-	case from.Pos == nil && to.Pos != nil:
-		// TODO: bounds check
-
-		// Orbital Params to 3D pos
-	case from.Pos == nil && to.Pos == nil:
-		// TODO: should be doable without intermediate cartesian
-		// TODO: bounds check
-
-		// Orbital Params to Orbital Params
-	}
-
+func (rf *RefFrame) IsRoot() bool {
+	return rf.Parent == nil
 }

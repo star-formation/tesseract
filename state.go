@@ -46,7 +46,22 @@ type State struct {
 	MB *MessageBus
 	AB *MessageBus
 
+	EntCount uint64
+
 	EntsInFrames map[*RefFrame]map[Id]bool
+
+	// TODO: track frames one level below root
+	// TODO: think about search, log N complexity
+	GalacticFrames map[Id]*RefFrame
+
+	// Hyperspace component holds data used by the Hyperdrive System
+	HSC map[Id]*Hyperspace
+
+	// TODO: consolidate
+	StarC map[Id]*Star
+	Stars map[string]*Star
+
+	AllSectors map[string]*Sector
 
 	//
 	// Physics Components
@@ -54,11 +69,14 @@ type State struct {
 	// Mass component holds float64 values
 	MassC map[Id]*float64
 
-	// Position, Velocity components holds 3x1 vectors
+	// Position and Velocity components holds 3x1 vectors
 	PC map[Id]*V3
 
+	// Orbit Component holds Keplerian Orbital Elements
+	ORBC map[Id]*OE
+
 	// Orientation Component holds quaternions
-	OC map[Id]*Q
+	ORIC map[Id]*Q
 
 	// Holds velocity and force generators for movable entities
 	MC map[Id]Mobile
@@ -93,36 +111,47 @@ func ResetState() {
 
 	channels := make([]chan<- []byte, 0)
 	s.MB = &MessageBus{channels}
-
 	channels2 := make([]chan<- []byte, 0)
 	s.AB = &MessageBus{channels2}
 
-	s.EntsInFrames = make(map[*RefFrame]map[Id]bool, 1)
-
-	s.MassC = make(map[Id]*float64, 1)
-	s.PC = make(map[Id]*V3, 1)
-
-	s.OC = make(map[Id]*Q, 1)
-
-	s.MC = make(map[Id]Mobile, 1)
-	s.RC = make(map[Id]Rotational, 1)
-
-	s.SRC = make(map[Id]*float64, 1)
-
-	s.SCC = make(map[Id]ShipClass, 1)
-
+	s.EntsInFrames = make(map[*RefFrame]map[Id]bool, 0)
+	s.GalacticFrames = make(map[Id]*RefFrame, 0)
+	s.HSC = make(map[Id]*Hyperspace, 0)
+	s.StarC = make(map[Id]*Star, 0)
+	s.Stars = make(map[string]*Star, 0)
+	s.AllSectors = make(map[string]*Sector, 0)
+	s.MassC = make(map[Id]*float64, 0)
+	s.PC = make(map[Id]*V3, 0)
+	s.ORBC = make(map[Id]*OE, 0)
+	s.ORIC = make(map[Id]*Q, 0)
+	s.MC = make(map[Id]Mobile, 0)
+	s.RC = make(map[Id]Rotational, 0)
+	s.SRC = make(map[Id]*float64, 0)
+	s.SCC = make(map[Id]ShipClass, 0)
 	S = s
 }
 
-// TODO: auto-increment entity ID and decouple its component
+func (s *State) NewEntity() Id {
+	s.EntCount += 1
+	return Id(s.EntCount)
+}
+
+func (s *State) AddStar(star *Star, pos *V3) {
+	s.PC[star.Entity] = pos
+	s.StarC[star.Entity] = star
+	s.Stars[star.Body.Name] = star
+}
+
+/*
 func (s *State) NewEntity(e Id) {
-	s.OC[e] = new(Q)
+	s.ORIC[e] = new(Q)
 
 	fgs := make([]ForceGen, 0)
 	S.MC[e] = Mobile{new(V3), &fgs}
 
 	s.RC[e] = Rotational{new(V3), new(M3), new(M3), new(M4)}
 }
+*/
 
 func (s *State) AddForceGen(e Id, fg ForceGen) {
 	*(s.MC[e].FGs) = append(*(s.MC[e].FGs), fg)
@@ -153,7 +182,7 @@ func (s *State) MarshalJSON() ([]byte, error) {
 			mass,
 			s.PC[eId],
 			s.MC[eId].V,
-			s.OC[eId],
+			s.ORIC[eId],
 			s.RC[eId].R,
 		}
 		rfJSON.Ents = append(rfJSON.Ents, entJSON)

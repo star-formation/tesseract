@@ -18,77 +18,180 @@
 package tesseract
 
 import (
-	"fmt"
-	"math"
 	"testing"
 )
 
-type orbTest struct {
-	Name     string
-	pos, vel *V3
-	gm       float64
-	o        *OE
-}
+// Exact values in these tests often differ slightly from the
+// calculations in [1] as the book rounds intermediate and final values to
+// only a few decimals but we retain 64 bit precision in all calculations.
 
-func TestOrbitalElementConv(t *testing.T) {
-	case2 := orbTest{
-		"earth1",
-		&V3{REarth + 600.0*1000, 0.0, 50.0},
-		&V3{0.0, 6.5 * 1000, 0.0},
-		MUEarth,
-		&OE{0.26035023023005477, 5.536635637306466e+06, 7.165289638066952e-06, -1.5707963267948966, -1.5707963267948966, -2049.9813051575525, 3.141592653589793}, // TODO
-	}
+// TODO: add test data from Section 4.4
+
+func TestStateVectorConv(t *testing.T) {
+	// Example 4.3.
+	r := &V3{-6045, -3490, 2500}
+	v := &V3{-3.457, 6.618, 2.533}
+	μ := 398600.0
 
 	/*
-		case3 := orbTest{
-			"ISS",
-			&V3{},
-			&V3{},
-			MUEarth,
-			&OE{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
+		ex := &OE{
+			58310,           // km^2/s (magnitude of specific angular momentum)
+			DegToRad(153.2), // degrees (inclination)
+			DegToRad(255.3), // degrees (longitude of the ascending node)
+			0.1712,          // dimensionless (eccentricity)
+			DegToRad(20.07), // degrees (argument of periapsis)
+			DegToRad(28.45), // degrees (true anomaly)
+			398600.0,
 		}
 	*/
 
-	cases := []orbTest{
-		case2,
+	calc := StateVectorToOrbital(r, v, μ)
+	calc.Debug()
+	// TODO: add comparison within threshold
+}
+
+func TestOrbElemConv(t *testing.T) {
+	// Example 4.7.
+	o := &OE{80000, DegToRad(30), DegToRad(40), 1.4, DegToRad(60), DegToRad(30), 398600}
+	r, v := o.OrbitalToStateVector()
+
+	re := &V3{-4039.895923201738, 4814.560480182377, 3628.6247021718837}
+	ve := &V3{-10.385987618194685, -4.771921637340853, 1.7438750000000005}
+
+	if r.X != re.X || r.Y != re.Y || r.Z != re.Z {
+		t.Errorf("pos: got: \n%v, expected: \n%v", r, re)
 	}
 
-	for _, tc := range cases {
-		t.Run(tc.Name, func(t *testing.T) {
-			o := CartToOE(tc.pos, tc.vel, tc.gm)
-			o.Debug()
-			if o.E != tc.o.E || o.S != tc.o.S || o.I != tc.o.I || o.L != tc.o.L || o.A != tc.o.A || o.T != tc.o.T {
+	if v.X != ve.X || v.Y != ve.Y || v.Z != ve.Z {
+		t.Errorf("vel: got: \n%v, expected: \n%v", v, ve)
+	}
 
-				t.Errorf("Cartesian to Orbital Elements mismatch, got:\n%v\nwant:\n%v", o, tc.o)
-			}
-			pos, vel := OEToCart(o, tc.gm)
-			if math.Abs(pos.X)-math.Abs(tc.pos.X) > tolerance ||
-				math.Abs(pos.Y)-math.Abs(tc.pos.Y) > tolerance ||
-				math.Abs(pos.Z)-math.Abs(tc.pos.Z) > 0.001 { // TODO: lower
-				t.Errorf("Orbital Elements to Cartesian mismatch, got:\n%v\nwant:\n%v", pos, tc.pos)
-			}
-			if math.Abs(vel.X)-math.Abs(tc.vel.X) > 0.000000000001 ||
-				math.Abs(vel.Y)-math.Abs(tc.vel.Y) > 0.00000000001 ||
-				math.Abs(vel.Z)-math.Abs(tc.vel.Z) > tolerance {
-				t.Errorf("Orbital Elements to Cartesian mismatch, got:\n%v\nwant:\n%v", vel, tc.vel)
-			}
-		})
+	o2 := StateVectorToOrbital(r, v, o.μ)
+	o2.Debug()
+	// TODO: check o2 vs o
+}
+
+func TestFromTimeElliptic(t *testing.T) {
+	// This test uses intermediate values in Example 3.1 and 3.2.
+	o := &OE{}
+	o.h = 72472
+	o.e = 0.37255
+	o.μ = 398600.0
+
+	// In example 3.1, step 3, the final value is 193.2
+	exθ := DegToRad(193.1540909884592)
+	θ := o.TrueAnomalyFromTime(0, 10800)
+	if θ != exθ {
+		t.Errorf("θ: got: \n%v, expected: \n%v", RadToDeg(θ), RadToDeg(exθ))
 	}
 }
 
-func TestOrbitalElementConvISS(t *testing.T) {
-	ISSOE := &OE{
-		E: 0.0005040,          // dimensionless
-		S: REarth + 422*1000,  // m
-		I: DegToRad(51.6420),  // radians
-		L: DegToRad(286.4848), // radians
-		A: DegToRad(230.6842), // radians
-		T: DegToRad(129.3862), // radians
+func TestFromTimeParabolic(t *testing.T) {
+	// This test uses values in Example 3.4.
+	o := &OE{}
+	o.h = 79720
+	o.e = 1.0
+	o.μ = 398600.0
+
+	exθ := 144.75444965830107
+	θ := o.TrueAnomalyFromTime(0, 6*3600)
+	if RadToDeg(θ) != exθ {
+		t.Errorf("θ: got: \n%v, expected: \n%v", RadToDeg(θ), exθ)
 	}
 
-	pos, vel := OEToCart(ISSOE, MUEarth)
-	fmt.Printf("pos: %v\nvel: %v\nvelMag: %v\n", pos, vel, vel.Magnitude())
+	o.θ = θ
 
-	o := CartToOE(pos, vel, MUEarth)
-	o.Debug()
+	exAlt := 86976.62246749947
+	alt := o.Altitude()
+	if alt != exAlt {
+		t.Errorf("altitude: got: \n%v, expected: \n%v", alt, exAlt)
+	}
+}
+
+func TestFromTimeHyperbolic(t *testing.T) {
+	// This test uses values in Example 3.5.
+	o := &OE{}
+	o.h = 100170
+	o.e = 2.7696
+	o.μ = 398600.0
+
+	// Example 3.5 step 5 yields 107.78 degrees
+	exθ := 1.8811167388351486 //DegToRad(107.78)
+	θ := o.TrueAnomalyFromTime(0, 4141.4+3*3600)
+	if θ != exθ {
+		t.Errorf("θ: got: \n%v, expected: \n%v", θ, exθ)
+	}
+	o.θ = θ
+
+	exAlt := 163181.8946911754
+	alt := o.Altitude()
+	if alt != exAlt {
+		t.Errorf("altitude: got: \n%v, expected: \n%v", alt, exAlt)
+	}
+
+}
+
+//
+// Benchmarks
+//
+func BenchmarkOrbitConv(b *testing.B) {
+	rnd, _ := NewRand(42)
+	Rand = rnd
+
+	μ := 398600.0
+	posScale := 10000.0
+	velScale := 10000.0
+
+	r := &V3{}
+	v := &V3{}
+	oe := &OE{}
+
+	randRV := func() {
+		r.X = Rand.Float64() * posScale
+		r.Y = Rand.Float64() * posScale
+		r.Z = Rand.Float64() * posScale
+		v.X = Rand.Float64() * velScale
+		v.Y = Rand.Float64() * velScale
+		v.Z = Rand.Float64() * velScale
+	}
+
+	randOE := func() {
+		oe.h = 10000 + Rand.Float64()*100000
+		oe.i = Rand.Float64() * DegToRad(180)
+		oe.Ω = Rand.Float64() * DegToRad(360)
+		oe.e = Rand.Float64() * 2.0
+		oe.ω = Rand.Float64() * DegToRad(180)
+		oe.θ = Rand.Float64() * DegToRad(360)
+		oe.μ = Rand.Float64()*μ*1.5 + μ/3
+	}
+
+	b.ResetTimer()
+	b.Run("SVToOE", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			b.StopTimer()
+			randRV()
+			b.StartTimer()
+			oe = StateVectorToOrbital(r, v, μ)
+		}
+	})
+
+	b.Run("OEToSV", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			b.StopTimer()
+			randOE()
+			b.StartTimer()
+			r, v = oe.OrbitalToStateVector()
+		}
+	})
+
+	b.Run("SVToOEToSV", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			b.StopTimer()
+			randRV()
+			b.StartTimer()
+			oe = StateVectorToOrbital(r, v, μ)
+			r, v = oe.OrbitalToStateVector()
+			oe = StateVectorToOrbital(r, v, μ)
+		}
+	})
 }

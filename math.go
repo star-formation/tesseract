@@ -32,18 +32,6 @@ References:
 
 */
 
-const (
-	DBL_EPSILON = 2.2204460492503131E-16
-
-	// acceptable tolerance of errors of float64 calculations compared to
-	// analytical or precalculated solutions
-	tolerance = 0.000000000000001
-)
-
-var (
-	KHat = V3{0, 0, 1}
-)
-
 type V3 struct {
 	X, Y, Z float64
 }
@@ -275,4 +263,14 @@ func RadToDeg(radians float64) float64 {
 
 func DegToRad(degrees float64) float64 {
 	return degrees * (math.Pi / 180)
+}
+
+func NormalizeAngle(a float64) float64 {
+	if a < 0 {
+		a += twoPi
+	}
+	if a > twoPi {
+		a -= twoPi
+	}
+	return a
 }

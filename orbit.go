@@ -22,181 +22,316 @@ import (
 	"math"
 )
 
-/*
- See https://en.wikipedia.org/wiki/Orbital_elements
+//
+// NOTE: Unless otherwise noted, referenced equations, algorithms, tables,
+//       chapters and examples are from reference [1].
+//
+// References:
+//
+// [1] Curtis, H.D., 2013. Orbital mechanics for engineering students.
+// [2] https://en.wikipedia.org/wiki/Orbital_elements
+// [3] https://en.wikipedia.org/wiki/Specific_relative_angular_momentum
+//
 
- To reduce code verbosity in physics code, we use this naming:
- E = Eccentricity
- S = Semimajor Axis
- I = Inclination
- L = Longitude of the ascending node
- A = Argument of periapsis
- T = True anomaly
-
-*/
+// OE holds orbital elements [2] and related variables to uniquely represent
+// a specific orbit in the simplified two-body model.
+// The orbiter is assumed to have neglible mass compared to the primary (host)
+// body and the primary is stationary in the applicable reference frame.
+//
+// Elements/Fields:
+//
+// h: Specific angular momentum (See [3] and chapter 2.4 in [1])
+// i: Inclination
+// Ω: Longitude of the ascending node
+// e: Eccentricity
+// ω: Argument of Periapsis
+// θ: True Anomaly
+// μ: Standard gravitational parameter of the primary
+//
 type OE struct {
-	E, S, I, L, A, T float64
-
-	// TODO: verify
-	EA float64
+	h, i, Ω, e, ω, θ, μ float64
 }
 
 func (o *OE) Debug() {
-	fmt.Printf("Orbital Params:\n")
-	fmt.Printf("o: %v\n", o)
-	fmt.Printf("a: %.3f km\n", o.S/1000)
-	fmt.Printf("e: %.6f\n", o.E)
-	fmt.Printf("i: %.1f deg\n", RadToDeg(o.I))
-	fmt.Printf("Ω: %.1f deg\n", RadToDeg(o.L))
-	fmt.Printf("ω: %.1f deg\n", RadToDeg(o.A))
-	fmt.Printf("f: %.1f deg \n", RadToDeg(o.T))
-	//log.Info("OE: ", "E", o.E, "S", o.S, "I", o.I, "L", o.L, "A", o.A, "T", o.T)
+	fmt.Printf(" h: %f\n i: %f\n Ω: %f\n e: %f\n ω: %f\n θ: %f\n μ: %f\n",
+		o.h, RadToDeg(o.i), RadToDeg(o.Ω), o.e, RadToDeg(o.ω), RadToDeg(o.θ), o.μ)
 }
 
-func OEToCart(o *OE, μ float64) (*V3, *V3) {
-	a, e, i, Ω, ω, EA := o.S, o.E, o.I, o.L, o.A, o.EA
-
-	ν := 2 * math.Atan(math.Sqrt((1+e)/(1-e))*math.Tan(EA/2))
-	r := a * (1 - e*math.Cos(EA))
-	h := math.Sqrt(μ * a * (1 - e*e))
-
-	x := r * (math.Cos(Ω)*math.Cos(ω+ν) - math.Sin(Ω)*math.Sin(ω+ν)*math.Cos(i))
-	y := r * (math.Sin(Ω)*math.Cos(ω+ν) + math.Cos(Ω)*math.Sin(ω+ν)*math.Cos(i))
-	z := r * (math.Sin(i) * math.Sin(ω+ν))
-
-	p := a * (1 - e*e)
-
-	vx := (x*h*e/(r*p))*math.Sin(ν) - (h/r)*(math.Cos(Ω)*math.Sin(ω+ν)+math.Sin(Ω)*math.Cos(ω+ν)*math.Cos(i))
-	vy := (y*h*e/(r*p))*math.Sin(ν) - (h/r)*(math.Sin(Ω)*math.Sin(ω+ν)-math.Cos(Ω)*math.Cos(ω+ν)*math.Cos(i))
-	vz := (z*h*e/(r*p))*math.Sin(ν) - (h/r)*(math.Cos(ω+ν)*math.Sin(i))
-
-	return &V3{x, y, z}, &V3{vx, vy, vz}
+// SemimajorAxis returns the semimajor axis of the orbit.
+func (o *OE) SemimajorAxis() float64 {
+	h, e, μ := o.h, o.e, o.μ
+	// Eqn 2.71 and 3.47
+	return ((h * h) / μ) * (1 / (1 - e*e))
 }
 
-func CartToOE(pos, vel *V3, μ float64) *OE {
-	hBar := new(V3).VectorProduct(pos, vel)
-	h := hBar.Magnitude()
-
-	r := pos.Magnitude()
-	v := vel.Magnitude()
-
-	E := 0.5*(v*v) - μ/r
-
-	a := -μ / (2 * E)
-
-	e := math.Sqrt(1 - (h*h)/(a*μ))
-
-	i := math.Acos(hBar.Z / h)
-
-	lan := math.Atan2(hBar.X, -hBar.Y)
-
-	x0 := pos.Z / math.Sin(i)
-	x1 := pos.X*math.Cos(lan) + pos.Y*math.Sin(lan)
-	lat := math.Atan2(x0, x1)
-
-	p := a * (1 - e*e)
-	ν := math.Atan2(math.Sqrt(p/μ)*pos.ScalarProduct(vel), p-r)
-
-	ap := lat - ν
-
-	EA := 2 * math.Atan(math.Sqrt((1-e)/(1+e))*math.Tan(ν/2))
-
-	n := math.Sqrt(μ / (a * a * a))
-	// TODO: correct epoch/time calc
-	t := 0.0
-	T := t - (1/n)*(EA-e*math.Sin(EA))
-
-	return &OE{S: a, E: e, I: i, A: ap, L: lan, T: T, EA: EA}
+// SemiminorAxis returns the semiminor axis of the orbit.
+// TODO: generalize to all orbit types, see table 3.1
+func (o *OE) SemiminorAxis() float64 {
+	e := o.e
+	// Eqn 2.76
+	return o.SemimajorAxis() * math.Sqrt(1-e*e)
 }
 
-/*
-// TODO: simplify/merge if statements and math
-func CartToOE(pos, vel *V3, gm float64) *OE {
-	// https://space.stackexchange.com/questions/1904/how-to-programmatically-calculate-orbital-elements-using-position-velocity-vecto
-	// https://github.com/RazerM/orbital/blob/master/orbital/utilities.py#L252
-	h := new(V3).VectorProduct(pos, vel)
-	nHat := new(V3).VectorProduct(&KHat, h)
+// Periapsis returns the nearest point of the orbit.
+func (o *OE) Periapsis() float64 {
+	h, e, μ := o.h, o.e, o.μ
+	// Eqn 2.50
+	return ((h * h) / μ) * (1 / (1 + e))
+}
 
-	// TODO: support parabolic orbits
-	ev := eccentricity(pos, vel, gm)
-	e := ev.Magnitude()
-	if e == 1.0 {
-		panic("orbital eccentricity == 1.0 (parabolic orbit)")
-	}
-
-	energy := specificOrbitalEnergy(pos, vel, gm)
-
-	s := -gm / (2.0 * energy)
-	i := math.Acos(h.Z / h.Magnitude())
-
-	lim := 1e-15
-	l, ap, f := 0.0, 0.0, 0.0
-	if math.Abs(i) < lim {
-		if math.Abs(e) >= lim {
-			ap = math.Acos(ev.X / ev.Magnitude())
-		}
+// Apoapsis returns the farthest point of the orbit.
+// Positive infinity is returned if the orbit is parabolic or hyperbolic.
+func (o *OE) Apoapsis() float64 {
+	h, e, μ := o.h, o.e, o.μ
+	if e >= 1.0 {
+		return math.Inf(1)
 	} else {
-		l = math.Acos(nHat.X / nHat.Magnitude())
-		if nHat.Y < 0 {
-			l = 2*math.Pi - l
-		}
-
-		ap = math.Acos(nHat.ScalarProduct(ev) / (nHat.Magnitude() * e))
+		// Eqn 2.70
+		return ((h * h) / μ) * (1 / (1 - e))
 	}
+}
 
-	if math.Abs(e) < lim {
-		if math.Abs(i) < lim {
-			f = math.Acos(pos.X / pos.Magnitude())
-			if vel.X > 0 {
-				f = 2*math.Pi - f
-			}
-		} else {
-			x0 := nHat.ScalarProduct(pos)
-			x1 := nHat.Magnitude() * pos.Magnitude()
-			f = math.Acos(x0 / x1)
-			if nHat.ScalarProduct(vel) > 0 {
-				f = 2*math.Pi - f
-			}
-		}
+// Altitude returns the distance between the orbiter and the primary.
+// Altitude works for parabolic and hyperbolic orbits, but returns
+// positive infinity if 1 + e*math.Cos(θ) <= 0.
+func (o *OE) Altitude() float64 {
+	h, e, θ, μ := o.h, o.e, o.θ, o.μ
+	// Eqn 2.45
+	d := 1 + e*math.Cos(θ)
+	if d <= 0 {
+		return math.Inf(1)
 	} else {
-		if ev.Z < 0 {
-			ap = 2*math.Pi - ap
-		}
-		x0 := ev.ScalarProduct(pos)
-		x1 := e * pos.Magnitude()
-		f = math.Acos(x0 / x1)
-		if pos.ScalarProduct(vel) < 0 {
-			f = 2*math.Pi - f
-		}
+		return ((h * h) / μ) * (1 / d)
+	}
+}
+
+// https://en.wikipedia.org/wiki/Vis-viva_equation
+func (o *OE) Speed() float64 {
+	μ := o.μ
+	r := o.Altitude()
+	a := o.SemimajorAxis()
+	return math.Sqrt(μ * ((2 / r) - (1 / a)))
+}
+
+// Period returns the orbital period.
+// Positive infinity is returned if the orbit is parabolic or hyperbolic.
+// https://en.wikipedia.org/wiki/Orbital_period#Small_body_orbiting_a_central_body
+func (o *OE) Period() float64 {
+	e, μ := o.e, o.μ
+	if e < 1 { // elliptical and circular
+		return twoPi * math.Sqrt(math.Pow(o.SemimajorAxis(), 3)/μ)
 	}
 
-	return &OE{E: e, S: s, I: i, L: l, A: ap, T: f}
+	// parabolic and hyperbolic
+	return math.Inf(1) // positive infinity
 }
 
-func specificOrbitalEnergy(pos, vel *V3, gm float64) float64 {
-	posMag := pos.Magnitude()
-	velMag := vel.Magnitude()
-	energy := (velMag * velMag) / 2.0
-	energy -= gm / posMag
-	return energy
+// TrueAnomalyAtTime returns the orbit's true anomaly in radians at time t1
+// using t0 as the time of the current true anomaly.
+// TrueAnomalyAtTime panics if t1 is not greater than t0.
+func (o *OE) TrueAnomalyFromTime(t0, t1 float64) float64 {
+	if t1 <= t0 {
+		panic("t1 must be greater than t0")
+	}
+
+	var θ float64
+	h, e, μ := o.h, o.e, o.μ
+
+	switch {
+	case e == 0: // circular
+		// Chapter 3.3
+		θ = (twoPi / o.Period()) * t1
+
+	case e < 1: // elliptical
+		// Eqn 3.8
+		Me := (twoPi / o.Period()) * t1
+		// Algorithm 3.1
+		E := eccentricAnomaly(e, Me)
+		// Eqn 3.13a
+		x0 := math.Sqrt((1.0+e)/(1.0-e)) * math.Tan(E/2.0)
+		θ = 2 * math.Atan(x0)
+
+	case e == 1: // parabolic
+		// Eqn 3.31
+		Mp := (μ * μ * t1) / (h * h * h)
+		// Eqn 3.32
+		x0 := (3*Mp + math.Sqrt(math.Pow(3*Mp, 2)+1))
+		x1 := math.Pow(x0, 1.0/3.0) - math.Pow(x0, -1.0/3.0)
+		θ = 2 * math.Atan(x1)
+
+	case e > 1: // hyperbolic
+		// Eqn 3.34
+		x0 := (μ * μ) / (h * h * h)
+		x1 := math.Pow(e*e-1, 3.0/2.0)
+		Mh := x0 * x1 * t1
+		// Algorithm 3.2
+		F := hyperbolicEccentricAnomaly(e, Mh)
+		// Eqn 3.44b
+		x2 := math.Sqrt((e+1)/(e-1)) * math.Tanh(F/2)
+		θ = 2 * math.Atan(x2)
+	}
+
+	return NormalizeAngle(θ)
 }
 
-func eccentricity(pos, vel *V3, gm float64) *V3 {
-	// TODO: compare Magnitude vs Normalise
-	posMag := pos.Magnitude()
-	velMag := vel.Magnitude()
-	// x0, x1, ... hold intermediate values (for easy debugging)
-	x0 := velMag * velMag
-	x0 -= gm / posMag
+func (o *OE) TimeFromTrueAnomaly(θ float64) float64 {
+	// TODO: normalize / mod
+	if θ < 0 || θ > twoPi {
+		panic("ta must be in 0-2π radians")
+	}
+	h, e, μ := o.h, o.e, o.μ
+	var t float64
 
-	x1 := new(V3).MulScalar(pos, x0)
+	switch {
+	case e == 0: // circular
+		// Chapter 3.3
+		t = ((h * h * h) / (μ * μ)) * θ
+	case e < 1: // elliptical
+		// Eqn 3.13b
+		x0 := math.Sqrt((1 - e) / (1 + e))
+		x1 := math.Tan(θ) / 2
+		E := 2 * math.Atan(x0*x1)
+		// Eqn 3.14
+		Me := E - e*math.Sin(E)
+		// Eqn 3.15
+		t = (Me / twoPi) * o.Period()
+	case e == 1: // parabolic
+		// Eqn 3.30 (substitution for Mp)
+		x0 := math.Tan(θ / 2)
+		Mp := (1/2)*x0 + (1/6)*math.Pow(x0, 3)
+		// Eqn 3.31 (substitution for t)
+		t = (Mp * (h * h * h)) / (μ * μ)
+	case e > 1: // hyperbolic
+		// Eqn 3.33
+		x0 := e * math.Sqrt(e*e-1) * math.Sin(θ)
+		x1 := 1 + e*math.Cos(θ)
+		x2 := math.Sqrt(e + 1)
+		x3 := math.Sqrt(e-1) * math.Tan(θ/2)
+		x4 := math.Log((x2 + x3) / (x2 - x3))
+		Mh := (x0 / x1) - x4
+		// Eqn 3.34 (substitution for t)
+		t = Mh / (((μ * μ) / (h * h * h)) * math.Pow(e*e-1, 3.0/2.0))
+	}
 
-	x2 := pos.ScalarProduct(vel)
-
-	x3 := new(V3).MulScalar(vel, x2)
-
-	x4 := new(V3).Sub(x1, x3)
-
-	return new(V3).MulScalar(x4, 1/gm)
+	return t
 }
-*/
+
+func eccentricAnomaly(e, Me float64) float64 {
+	// Algorithm 3.1
+	Ei := Me + e/2
+	if Me > math.Pi {
+		Ei = Me - e/2
+	}
+
+	var ratio float64
+
+NewApproximation:
+	ratio = (Ei - e*math.Sin(Ei) - Me) / (1 - e*math.Cos(Ei))
+	if math.Abs(ratio) > eccentricAnomalyTolerance {
+		Ei -= ratio
+		goto NewApproximation
+	}
+
+	return Ei
+}
+
+func hyperbolicEccentricAnomaly(e, Mh float64) float64 {
+	// Algorithm 3.2
+	Fi := Mh
+
+	var ratio float64
+
+NewApproximation:
+	ratio = (e*math.Sinh(Fi) - Fi - Mh) / (e*math.Cosh(Fi) - 1)
+	if math.Abs(ratio) > hyperbolicEccentricAnomalyTolerance {
+		Fi -= ratio
+		goto NewApproximation
+	}
+
+	return Fi
+}
+
+// StateVectorToOrbital returns the orbital elements converted from the orbital
+// state vector and standard gravitational parameter of the primary.
+// See Algorithm 4.2 and https://en.wikipedia.org/wiki/Orbital_state_vectors
+func StateVectorToOrbital(r, v *V3, μ float64) *OE {
+	dist := r.Magnitude()
+	speed := v.Magnitude()
+	radialVel := r.ScalarProduct(v) / dist
+
+	h := new(V3).VectorProduct(r, v)
+	hMag := h.Magnitude()
+
+	i := math.Acos(h.Z / hMag)
+
+	nodeLine := new(V3).VectorProduct(KHat, h)
+	nodeLineMag := nodeLine.Magnitude()
+
+	Ω := math.Acos(nodeLine.X / nodeLineMag)
+	if nodeLine.Y < 0 {
+		Ω = 2*math.Pi - Ω
+	}
+
+	// x0, .., xn hold intermediate calculations for eq 4.10
+	x0 := (speed * speed) - (μ / dist)
+	x1 := new(V3).MulScalar(r, x0)
+	x2 := new(V3).MulScalar(v, dist*radialVel)
+	x3 := new(V3).Sub(x1, x2)
+	eVec := new(V3).MulScalar(x3, 1/μ)
+	e := eVec.Magnitude()
+
+	ω := math.Acos(nodeLine.ScalarProduct(eVec) / (nodeLineMag * e))
+	if eVec.Z < 0 {
+		ω = 2*math.Pi - ω
+	}
+
+	θ := math.Acos(eVec.ScalarProduct(r) / (e * dist))
+	if radialVel < 0 {
+		θ = 2*math.Pi - θ
+	}
+
+	return &OE{hMag, i, Ω, e, ω, θ, μ}
+}
+
+// OrbitalToStateVector returns the orbital state vector of the orbit.
+// Perifocal coordinates are used in an intermediate step.
+// See Algorithm 4.5 and
+// https://en.wikipedia.org/wiki/Perifocal_coordinate_system
+func (o *OE) OrbitalToStateVector() (*V3, *V3) {
+	h, i, Ω, e, ω, θ, μ := o.h, o.i, o.Ω, o.e, o.ω, o.θ, o.μ
+	// x0, ..., xn hold intermediate calculations
+	x0 := ((h * h) / μ)
+	x0 *= (1 / (1 + e*math.Cos(θ)))
+	periPos := &V3{
+		x0 * math.Cos(θ),
+		x0 * math.Sin(θ),
+		0.0}
+
+	x1 := μ / h
+
+	periVel := &V3{
+		x1 * (-math.Sin(θ)),
+		x1 * (e + math.Cos(θ)),
+		0.0,
+	}
+
+	// Eqn 4.49
+	perifocalToHostcentric := &M3{
+		-math.Sin(Ω)*math.Cos(i)*math.Sin(ω) + math.Cos(Ω)*math.Cos(ω),
+		-math.Sin(Ω)*math.Cos(i)*math.Cos(ω) - math.Cos(Ω)*math.Sin(ω),
+		math.Sin(Ω) * math.Sin(i),
+
+		math.Cos(Ω)*math.Cos(i)*math.Sin(ω) + math.Sin(Ω)*math.Cos(ω),
+		math.Cos(Ω)*math.Cos(i)*math.Cos(ω) - math.Sin(Ω)*math.Sin(ω),
+		-math.Cos(Ω) * math.Sin(i),
+
+		math.Sin(i) * math.Sin(ω),
+		math.Sin(i) * math.Cos(ω),
+		math.Cos(i),
+	}
+
+	pos := perifocalToHostcentric.Transform(periPos)
+	vel := perifocalToHostcentric.Transform(periVel)
+
+	return pos, vel
+}

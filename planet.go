@@ -18,7 +18,7 @@
 package tesseract
 
 type Planet struct {
-	Entity int64
+	Entity Id
 	Mass   float64
 	Radius float64
 

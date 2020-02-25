@@ -41,5 +41,5 @@ type Component interface {
 */
 type System interface {
 	Init() error
-	Update(elapsed float64, rf *RefFrame, entMap map[Id]bool) error
+	Update(worldTime, elapsed float64, rf *RefFrame, entMap map[Id]bool) error
 }
