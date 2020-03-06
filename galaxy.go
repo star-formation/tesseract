@@ -34,6 +34,8 @@ import (
 	"strconv"
 )
 
+// Sector is a galactic 3D cube volume used by the procedural generation of
+// stars and other galactic-level features.
 type Sector struct {
 	// Galactic X,Y,Z in gridUnit
 	Corner *V3
@@ -46,9 +48,9 @@ type Sector struct {
 	Stars []*Star
 }
 
-// Traverse enacts partial procedural generation of the sector.
-// This function is generally called when a player is traversing the sector
-// (having spent X time and/or moved Y distance in the sector)
+// Traverse enacts partial procedural generation of a sector.
+// Traverse is generally called by the TODO system when a player is traversing
+// the sector (having spent X time and/or moved Y distance in the sector).
 func (s *Sector) Traverse() {
 	if s.Mapped == 1.0 {
 		return
@@ -96,7 +98,7 @@ NewPos:
 		//fmt.Printf("%s\n", sec.Debug())
 		//sec.Debug()
 		for _, st := range sec.Stars {
-			pos := S.PC[st.Entity]
+			pos := S.Pos[st.Entity]
 			diff := x.Sub(pos, p).Magnitude()
 			//fmt.Printf("diff: %.2f\n", diff)
 			if diff < minStellarProximity {
@@ -170,14 +172,14 @@ func (s *Sector) getAdjacents() []*Sector {
 
 func GetSector(pos *V3) *Sector {
 	key := sectorKey(pos, true)
-	s, ok := S.AllSectors[key]
+	s, ok := S.Sectors[key]
 	if ok {
 		return s
 	} else {
 		newP := &V3{}
 		newP.X, newP.Y, newP.Z = pos.X, pos.Y, pos.Z
 		newS := &Sector{newP, 0.0, make([]*Star, 0)}
-		S.AllSectors[key] = newS
+		S.Sectors[key] = newS
 		return newS
 	}
 }
@@ -186,9 +188,9 @@ func (s *Sector) Debug() {
 	fmt.Printf("%s: mapped: %.2f star count: %d\n", s.Key(), s.Mapped, len(s.Stars))
 }
 
-func DebugAllSectors(onlyMapped bool) {
+func DebugSectors(onlyMapped bool) {
 	keys := []string{}
-	for key, s := range S.AllSectors {
+	for key, s := range S.Sectors {
 		if onlyMapped && s.Mapped == 0.0 {
 			continue
 		}
@@ -198,10 +200,10 @@ func DebugAllSectors(onlyMapped bool) {
 	sort.Strings(keys)
 
 	for _, k := range keys {
-		s := S.AllSectors[k]
+		s := S.Sectors[k]
 		fmt.Printf("%s ==== SECTOR: %.2f mapped, %d stars:\n", k, s.Mapped, len(s.Stars))
 		for _, st := range s.Stars {
-			fmt.Printf("%s %s Class: %s\n", sectorKey(S.PC[st.Entity], false), string(st.SpectralType), st.Body.Name)
+			fmt.Printf("%s %s Class: %s\n", sectorKey(S.Pos[st.Entity], false), string(st.SpectralType), st.Body.Name)
 		}
 	}
 

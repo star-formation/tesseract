@@ -18,8 +18,9 @@
 package tesseract
 
 import (
-	"fmt"
 	"time"
+
+	"github.com/ethereum/go-ethereum/log"
 )
 
 func InitWorld() {
@@ -40,8 +41,22 @@ func DevWorld(testSeed uint64) {
 	//	fmt.Println(starName())
 	//}
 	DevWorldStars()
-	DevHyperdrive()
-	DebugAllSectors(true)
+	DebugSectors(true)
+
+	//DevHyperdrive()
+	DevShipOrbit()
+
+	systems := []System{
+		&Physics{},
+		//&Hyperdrive{},
+	}
+	actionChan := make(chan Action, 10)
+	GE = &GameEngine{
+		systems:    systems,
+		actionChan: actionChan,
+	}
+
+	GE.Loop()
 }
 
 func DevWorldStars() {
@@ -70,8 +85,6 @@ func DevWorldStars() {
 		Pos:         nil,
 		Orbit:       nil,
 		Orientation: nil,
-		DragCoef1:   0.0,
-		DragCoef2:   0.0,
 	}
 
 	solRF := &RefFrame{
@@ -79,10 +92,8 @@ func DevWorldStars() {
 		Pos:         solSecPos,
 		Orbit:       nil,
 		Orientation: nil, // TODO
-		DragCoef1:   0.0,
-		DragCoef2:   0.0,
 	}
-	S.GalacticFrames[sol.Entity] = solRF
+	S.EntFrames[sol.Entity] = solRF
 
 	solSector := GetSector(solRF.Pos)
 	solSector.addStarFixed(sol, solPos)
@@ -101,45 +112,56 @@ func DevWorldStars() {
 	}
 }
 
-func DevHyperdrive() {
+func DevShipOrbit() {
 	// ==== SHIP
-	ship := &WarmJet{}
-	shipEnt := S.NewEntity()
-	S.SCC[shipEnt] = ship
+	e := S.NewEntity()
+	log.Debug("DevShipOrbit", "shipEnt", e)
+	shipClass := &WarmJet{}
+	S.ShipClass[e] = shipClass
 
 	var m0 float64
-	m0 = ship.MassBase()
-	S.MassC[shipEnt] = &m0
+	m0 = shipClass.MassBase()
+	S.Mass[e] = &m0
 
-	sol := S.Stars["Sol"]
+	S.Ori[e] = new(Q)
 
-	stars := make([]*Star, 0, len(S.Stars))
-	for _, s := range S.Stars {
-		//log.Debug("stars", "s", s)
-		stars = append(stars, s)
+	S.Rot[e] = &Rotational{new(V3), new(M3), new(M3), new(M4)}
+	shipIC := InertiaTensorCuboid(m0, 10, 10, 10)
+	shipIC.Inverse()
+	S.Rot[e].IITB = shipIC
+
+	fgs := make([]ForceGen, 0)
+	S.ForceGens[e] = fgs
+
+	sol := S.StarsByName["Sol"]
+	solRF := S.EntFrames[sol.Entity]
+	S.EntFrames[e] = solRF
+
+	devheim := &Planet{
+		Entity:         S.NewEntity(),
+		Mass:           1.0,
+		Radius:         1.0 * earthRadius,
+		AxialTilt:      0.0, // TODO: earth's
+		RotationPeriod: 24 * 3600,
+		SurfaceGravity: 1.0 * g0,
+		Atmosphere: &Atmosphere{
+			Height:           100 * 1000,
+			ScaleHeight:      8.5 * 1000,
+			PressureSeaLevel: 1.0 * earthSeaLevelPressure,
+		},
 	}
 
-	var i int
-	for {
-		i = Rand.Intn(len(S.Stars))
-		//log.Debug("debug", "i", i, "stars[i]", stars[i])
-		if stars[i] != nil && stars[i] != sol {
-			break
-		}
+	devheimRF := &RefFrame{
+		Parent:      solRF,
+		Pos:         nil,
+		Orbit:       sol.DefaultOrbit(),
+		Orientation: nil, // TODO
 	}
+	S.EntFrames[devheim.Entity] = devheimRF
 
-	randStar := stars[i]
-	S.HSC[shipEnt] = NewHyperspace(S.PC[sol.Entity], randStar, 0.0, 60.0)
-	fmt.Printf("%v\n", S.HSC[shipEnt])
-
-	actionChan := make(chan Action, 10)
-	GE = &GameEngine{
-		systems:    []System{&Physics{}, &Hyperdrive{}},
-		actionChan: actionChan,
-	}
-
-	go GE.Loop()
-
+	S.EntFrames[e] = devheimRF
+	S.Orb[e] = devheim.DefaultOrbit()
+	S.AddForceGen(e, &ThrustForceGen{m0 * g0 * 0.0001, 2})
 }
 
 /*
@@ -310,6 +332,6 @@ func DevWorldBase() {
 		DragCoef2:   1.0,
 	}
 
-	S.GalacticFrames[sol.Entity] = solRF
+	S.EntFrames[sol.Entity] = solRF
 }
 */

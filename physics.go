@@ -18,61 +18,58 @@
 package tesseract
 
 import (
-	"math"
+	"github.com/ethereum/go-ethereum/log"
 )
 
-// Physics Engine
-type Physics struct {
-}
+// The Physics system simulates classical mechanics.
+// It is primarily based on [1] and [2].
+//
+type Physics struct{}
 
-/*
-func (p *Physics) TorqueAtBodyPoint(e Id, rf *RefFrame, force, bodyPoint *V3) *V3 {
-	worldPoint := bodyToWorldPoint(bodyPoint)
-	return TorqueAtPoint(e, rf, force, worldPoint)
-}
-
-// TODO: in body.cpp , the force is not actually split into force on center of
-//       of mass and torque, but adds torque _on_top_of_ the force-at-point!
-// See https://www.gamedev.net/forums/topic/664930-force-and-torque/
-// TODO: clarify this assumption on e.g. position/source of force
-func (p *Physics) TorqueAtPoint(e Id, rf *RefFrame, force, worldPoint *V3) *V3 {
-	point := new(V3)
-	*point = *worldPoint
-	worldPoint.Sub(worldPoint, S.PC[e])
-	return worldPoint.VectorProduct(worldPoint, force)
-}
-*/
-
+//
 // System interface
+//
 func (p *Physics) Init() error {
 	return nil
 }
 
-func (p *Physics) Update(worldTime, elapsed float64, rf *RefFrame, ents map[Id]bool) error {
-	for e, _ := range ents {
-		// TODO: proper component/system membership test
-		if S.MC[e] == (Mobile{}) {
-			continue
+func (p *Physics) Update(worldTime, elapsed float64, rf *RefFrame) error {
+	log.Debug("Physics ====")
+	for e, _ := range S.HotEnts[rf] {
+		// TODO: after initial orbit debug, add len == 0 check
+		if S.ForceGens[e] != nil && len(S.ForceGens[e]) > 0 {
+			updateClassicalMechanics(worldTime, elapsed, rf, e)
 		}
-		// TODO: update either motion or orbit
-		updateMotion(elapsed, rf, e)
-		// updateOrbit(elapsed, rf, e)
-
 	}
 
 	// TODO: update ref frames
-
 	return nil
 }
 
-func updateOrbit(elapsed float64, rf *RefFrame, e Id) {
+func (p *Physics) IsHotPostUpdate(e Id) bool {
+	return S.ForceGens[e] != nil && len(S.ForceGens[e]) > 0
 }
 
-func updateMotion(elapsed float64, rf *RefFrame, e Id) {
+//
+// Internal functions
+//
+func updateClassicalMechanics(worldTime, elapsed float64, rf *RefFrame, e Id) {
+	var pos, vel *V3
+	if S.Orb[e] != nil {
+		log.Debug("Physics", "oe", S.Orb[e].Fmt())
+		pos, vel = S.Orb[e].OrbitalToStateVector()
+		log.Debug("Physics", "pos", pos.Fmt(), "vel", vel.Fmt())
+	} else {
+		pos = S.Pos[e]
+		vel = S.Vel[e]
+	}
+
+	log.Debug("Physics", "e", e, "len(fgs)", len(S.ForceGens[e]))
+
 	// update force generators
 	linearForce, torque := new(V3), new(V3)
 	expiredFGs := make(map[int]bool, 0)
-	for i, fg := range *S.MC[e].FGs {
+	for i, fg := range S.ForceGens[e] {
 		lf, t := fg.UpdateForce(e, elapsed)
 		if lf != nil {
 			linearForce.Add(linearForce, lf)
@@ -85,46 +82,63 @@ func updateMotion(elapsed float64, rf *RefFrame, e Id) {
 		}
 	}
 
-	// update linear acceleration from forces
-	inverseMass := float64(1) / *(S.MassC[e])
-	lastAcc := new(V3)
-	lastAcc.AddScaledVector(linearForce, inverseMass)
+	// TODO: skip updates if resulting linearForce and/or torque is zero.
+	log.Debug("Physics", "lf", linearForce, "tq", torque)
 
-	// update linear velocity
-	S.MC[e].V.AddScaledVector(lastAcc, elapsed)
+	if !linearForce.IsZero() {
+		// update linear acceleration from forces
+		inverseMass := float64(1) / *(S.Mass[e])
+		acc := new(V3)
+		acc.AddScaledVector(linearForce, inverseMass)
+		// update linear velocity
+		vel.AddScaledVector(acc, elapsed)
+	}
 
-	// update angular acceleration from torques
-	angularAcc := S.RC[e].IITW.Transform(torque)
+	if !torque.IsZero() {
+		// update angular acceleration from torques
+		angularAcc := S.Rot[e].IITW.Transform(torque)
+		// update angular velocity
+		S.Rot[e].R.AddScaledVector(angularAcc, elapsed)
+	}
 
-	// update angular velocity
-	S.RC[e].R.AddScaledVector(angularAcc, elapsed)
+	// update linear position
+	pos.AddScaledVector(vel, elapsed)
+
+	// update angular position (orientation)
+	S.Ori[e].AddScaledVector(S.Rot[e].R, elapsed)
+	// normalize orientation
+	S.Ori[e].Normalise()
 
 	// apply damping (universal)
-	S.MC[e].V.MulScalar(S.MC[e].V, math.Pow(linearDamping, elapsed))
-	S.RC[e].R.MulScalar(S.RC[e].R, math.Pow(angularDamping, elapsed))
+	//vel.MulScalar(vel, math.Pow(linearDamping, elapsed))
+	//S.Rot[e].R.MulScalar(S.Rot[e].R, math.Pow(angularDamping, elapsed))
 
-	// update linear position (V3.AddScaledVector)
-	S.PC[e].AddScaledVector(S.MC[e].V, elapsed)
-
-	// update angular position (Q.AddScaledVector)
-	S.ORIC[e].AddScaledVector(S.RC[e].R, elapsed)
-
-	// normalize orientation
-	S.ORIC[e].Normalise()
-
-	updateTransformMatrix(S.RC[e].T, S.PC[e], S.ORIC[e])
+	updateTransformMatrix(S.Rot[e].T, pos, S.Ori[e])
 
 	// update inverse inertia tensor in world coordinates
-	updateInertiaTensor(S.RC[e].IITW, S.RC[e].IITB, S.RC[e].T)
+	updateInertiaTensor(S.Rot[e].IITW, S.Rot[e].IITB, S.Rot[e].T)
+
+	if S.Orb[e] != nil {
+		S.Orb[e] = StateVectorToOrbital(pos, vel, S.Orb[e].μ)
+		log.Debug("Physics", "oe2", S.Orb[e].Fmt())
+	} else {
+		S.Pos[e] = pos
+		S.Vel[e] = vel
+	}
 
 	// Clear force/torque accumulator
-	newFGs := make([]ForceGen, 0, len(*S.MC[e].FGs)-len(expiredFGs))
-	for i, fg := range *S.MC[e].FGs {
-		if !expiredFGs[i] {
-			newFGs = append(newFGs, fg)
+	newFGCount := len(S.ForceGens[e]) - len(expiredFGs)
+	if newFGCount == 0 {
+		S.ForceGens[e] = []ForceGen{}
+	} else {
+		newFGs := make([]ForceGen, 0, len(S.ForceGens[e])-len(expiredFGs))
+		for i, fg := range S.ForceGens[e] {
+			if !expiredFGs[i] {
+				newFGs = append(newFGs, fg)
+			}
 		}
+		S.ForceGens[e] = newFGs
 	}
-	*S.MC[e].FGs = newFGs
 
 	//log.Debug("physics.Update", "p", S.PC[e], "v", S.MC[e].V, "o", S.ORIC[e], "r", S.RC[e].R)
 }
@@ -183,3 +197,21 @@ func updateInertiaTensor(tw, tb *M3, tm *M4) {
 	tw[7] = t52*tm[4] + t57*tm[5] + t62*tm[6]
 	tw[8] = t52*tm[8] + t57*tm[9] + t62*tm[10]
 }
+
+/*
+func (p *Physics) TorqueAtBodyPoint(e Id, rf *RefFrame, force, bodyPoint *V3) *V3 {
+	worldPoint := bodyToWorldPoint(bodyPoint)
+	return TorqueAtPoint(e, rf, force, worldPoint)
+}
+
+// TODO: in body.cpp , the force is not actually split into force on center of
+//       of mass and torque, but adds torque _on_top_of_ the force-at-point!
+// See https://www.gamedev.net/forums/topic/664930-force-and-torque/
+// TODO: clarify this assumption on e.g. position/source of force
+func (p *Physics) TorqueAtPoint(e Id, rf *RefFrame, force, worldPoint *V3) *V3 {
+	point := new(V3)
+	*point = *worldPoint
+	worldPoint.Sub(worldPoint, S.PC[e])
+	return worldPoint.VectorProduct(worldPoint, force)
+}
+*/

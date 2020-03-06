@@ -66,7 +66,6 @@ func (ge *GameEngine) Loop() error {
 		t0 = time.Now()
 		worldTime := t0.Sub(start)
 		elapsed = t0.Sub(last)
-		//log.Debug("engine.Loop", "c", debug, "run", time.Now().Sub(start))
 
 		if elapsed < loopTarget {
 			time.Sleep(loopTarget - elapsed)
@@ -77,6 +76,7 @@ func (ge *GameEngine) Loop() error {
 			last = t0
 		}
 
+		log.Debug("engine.Loop", "c", debug, "run", time.Now().Sub(start))
 		err = ge.update(worldTime.Seconds(), elapsed.Seconds())
 		if err != nil {
 			break
@@ -92,21 +92,35 @@ func (ge *GameEngine) Loop() error {
 		if err != nil {
 			break
 		}
-		S.MB.Post(j)
+		S.MsgBus.Post(j)
 	}
 
 	log.Info("engine.Loop", "err", err)
 	return err
 }
 
-// TODO: update only hot ents/frames
 // TODO: derive the update order for ref frames and ents from random beacon
 func (ge *GameEngine) update(worldTime, elapsed float64) error {
-	for rf, entMap := range S.EntsInFrames {
+	if len(S.HotEnts) == 0 {
+		return nil
+	}
+
+	for rf, _ := range S.HotEnts {
 		for _, sys := range ge.systems {
-			err := sys.Update(worldTime, elapsed, rf, entMap)
+			err := sys.Update(worldTime, elapsed, rf)
 			if err != nil {
 				return err
+			}
+		}
+
+		for _, sys := range ge.systems {
+			for e, _ := range S.HotEnts[rf] {
+				if !sys.IsHotPostUpdate(e) {
+					S.SetIdle(e, rf, worldTime)
+				}
+			}
+			if len(S.HotEnts[rf]) == 0 {
+				delete(S.HotEnts, rf)
 			}
 		}
 	}

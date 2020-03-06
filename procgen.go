@@ -15,29 +15,26 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+
 package tesseract
 
-import (
-	"os"
-
-	"github.com/ethereum/go-ethereum/log"
-)
+// The ProcGen system procedurally generates the game world.
+// The ProcGen system is activated when players traverse new space/terrain.
+type ProcGen struct{}
 
 //
-// References:
+//  System interface
 //
-// [1] Millington, Ian. Game physics engine development (Second Edition). CRC Press, 2010.
-// [2] https://github.com/idmillington/cyclone-physics/blob/master/include/cyclone/core.h
-//
+func (pg *ProcGen) Init() error {
+	return nil
+}
 
-func init() {
-	log.Root().SetHandler(log.MultiHandler(
-		log.StreamHandler(os.Stderr, log.TerminalFormat(true)),
-		log.LvlFilterHandler(
-			log.LvlDebug,
-			log.Must.FileHandler("tesseract_errors.json", log.JSONFormat()))))
+func (pg *ProcGen) Update(worldTime, elapsed float64, rf *RefFrame) error {
+	// Query hot entities new positions to determine whether we're traversing
+	// new space/terrain.
+	return nil
+}
 
-	MassHist = getMassHistogram()
-
-	//InitWorld()
+func (pg *ProcGen) IsHotPostUpdate(e Id) bool {
+	return false
 }

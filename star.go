@@ -28,6 +28,7 @@ import (
 	"strconv"
 )
 
+// Star is a unique star.
 type Star struct {
 	Entity Id
 	Body
@@ -37,6 +38,8 @@ type Star struct {
 	SurfaceTemp  float64
 }
 
+// NewStar returns a procedurally generated star.  Many of the stars attributes
+// are derived from the mass.
 func NewStar(mass float64) *Star {
 	star := &Star{}
 	star.Body.Name = starName()
@@ -53,13 +56,16 @@ func (s *Star) Debug() {
 	fmt.Printf("Class: %v Mass: %.3f Radius: %.0f km Temp: %.0f K Lum: %.3g W\n", strconv.QuoteRune(s.SpectralType), s.Body.Mass, s.Body.Radius/1000, s.SurfaceTemp, s.Luminosity)
 }
 
-// Destination orbit when traveling to s with warp drive or hyperdrive
+// DefaultOrbit returns an orbit suitable as destination for FTL drives.
 func (s *Star) DefaultOrbit() *OE {
-	hzInner, hzOuter := s.HabitableZone()
-	hzMiddle := hzInner + (hzOuter-hzInner)/2.0
-	trueAnomaly := 0.0 // TODO: time, epoch, ref frame
-	EA := 0.0          // TODO
-	return &OE{0.0, hzMiddle, 0.0, 0.0, 0.0, trueAnomaly, EA}
+	e, i, Ω, ω, θ := 0.0, 0.0, 0.0, 0.0, 0.0
+	μ := GravitationalConstant * s.Mass * solarMass
+	//hzInner, hzOuter := s.HabitableZone()
+	r := aum * 1.0 //(hzInner + (hzOuter-hzInner)/2.0) // middle of HZ
+
+	// Eqn 2.44 (substitution for h)
+	h := math.Sqrt((r + r*e*math.Cos(θ)) * μ)
+	return &OE{h: h, μ: μ, e: e, i: i, Ω: Ω, ω: ω, θ: θ}
 }
 
 // https://www.planetarybiology.com/calculating_habitable_zone.html

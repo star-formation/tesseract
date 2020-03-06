@@ -21,10 +21,22 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 )
 
+// ForceGen interface is implemented by force generators that generate linear
+// force and angular torque (the rotational equivalent of linear force) onto
+// moveable entities with mass.
+//
+// Force generators implementing the ForceGen interface are called by the
+// physics system once per game frame.
+//
+// Force generators must keep track of when they are expired.
 type ForceGen interface {
-	// Returns linear force and torque
+	// UpdateForce returns linear force and torque.
+	// Zero force/torque should be returned as nil.
+	// UpdateForce is called by the physics system once per game frame.
 	UpdateForce(e Id, duration float64) (*V3, *V3)
 
+	// IsExpired returns whether the force generator is expired.
+	// IsExpired is called by the physics system once per game frame update.
 	IsExpired() bool
 }
 
@@ -34,11 +46,11 @@ type DragForceGen struct {
 }
 
 func (d *DragForceGen) UpdateForce(e Id, duration float64) (*V3, *V3) {
-	if S.MC[e].V.IsZero() {
+	if S.Vel[e].IsZero() {
 		return nil, nil
 	}
 	vel := new(V3)
-	*vel = *(S.MC[e].V)
+	*vel = *(S.Vel[e])
 	velMag := vel.Magnitude()
 	drag := velMag*d.DragCoef1 + velMag*velMag*d.DragCoef2
 	force := vel
@@ -69,11 +81,12 @@ func (t *ThrustForceGen) UpdateForce(e Id, elapsed float64) (*V3, *V3) {
 		t.timeLeft = 0
 	}
 
-	fv := S.ORIC[e].ForwardVector()
+	fv := S.Ori[e].ForwardVector()
 	return fv.MulScalar(fv, f), nil
 }
 
 func (t *ThrustForceGen) IsExpired() bool {
+	log.Debug("IsExpired", "t.timeLeft", t.timeLeft)
 	return t.timeLeft == 0
 }
 
@@ -84,7 +97,7 @@ type TurnForceGen struct {
 }
 
 func (t *TurnForceGen) UpdateForce(e Id, elapsed float64) (*V3, *V3) {
-	tt := S.RC[e].T.Transform(t.torque)
+	tt := S.Rot[e].T.Transform(t.torque)
 
 	if t.timeLeft > elapsed {
 		t.timeLeft -= elapsed

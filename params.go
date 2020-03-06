@@ -60,10 +60,11 @@ const (
 	solarRadius = 6.957e8    // m
 
 	// https://en.wikipedia.org/wiki/Earth_mass
-	earthMass   = 5.9722e24 // kg
-	earthRadius = 6.3781e6
-	earthMu     = 3.986004418e14
-	g0          = 9.80665
+	earthMass             = 5.9722e24 // kg
+	earthRadius           = 6.3781e6  // km
+	earthMu               = 3.986004418e14
+	earthSeaLevelPressure = 101325 // pascals
+	g0                    = 9.80665
 
 	//
 	// Physics Engine

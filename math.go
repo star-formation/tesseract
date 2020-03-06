@@ -18,22 +18,21 @@
 package tesseract
 
 import (
+	"fmt"
 	"math"
 )
 
-/* Vector, Matrix and Quaternion Math.
-
-A good introduction is chapters 2 and 9 in [1].
-
-References:
-
-[1] Millington, Ian. Game physics engine development (Second Edition). CRC Press, 2010.
-[2] https://github.com/idmillington/cyclone-physics/blob/master/include/cyclone/core.h
-
-*/
-
+// Types and functions for 3D game math, including vectors, matrices,
+// quaternions and trigonometry.
+//
+// Based primarily on chapters 2 and 9 in [1].
+//
 type V3 struct {
 	X, Y, Z float64
+}
+
+func (v *V3) Fmt() string {
+	return fmt.Sprintf("x: %.6g y: %.6g z: %.6g", v.X, v.Y, v.Z)
 }
 
 func (v *V3) Set(a *V3) *V3 {

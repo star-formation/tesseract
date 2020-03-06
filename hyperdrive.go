@@ -19,6 +19,12 @@ package tesseract
 
 import "github.com/ethereum/go-ethereum/log"
 
+//
+// The hyperdrive system implements travel through hyperspace.
+//
+type Hyperdrive struct {
+}
+
 // Data for an instance of one ship in hyperdrive
 type Hyperspace struct {
 	// Start position in galactic grid units (see galaxy.go)
@@ -39,10 +45,6 @@ type Hyperspace struct {
 	Exited bool
 }
 
-// Hyperdrive System
-type Hyperdrive struct {
-}
-
 func NewHyperspace(start *V3, target *Star, wTime, tTime float64) *Hyperspace {
 	if wTime >= tTime {
 		panic("target time must be in the future")
@@ -50,7 +52,7 @@ func NewHyperspace(start *V3, target *Star, wTime, tTime float64) *Hyperspace {
 	travelSeconds := tTime - wTime
 
 	log.Debug("debug", "d", target.Entity)
-	dist := new(V3).Sub(start, S.PC[target.Entity]).Magnitude()
+	dist := new(V3).Sub(start, S.Pos[target.Entity]).Magnitude()
 	lightSeconds := ((dist * gridUnit) * aum) / speedOfLight
 	speed := lightSeconds / travelSeconds
 	return &Hyperspace{
@@ -62,44 +64,49 @@ func NewHyperspace(start *V3, target *Star, wTime, tTime float64) *Hyperspace {
 	}
 }
 
+//
 // System interface
+//
 func (hd *Hyperdrive) Init() error {
 	return nil
 }
 
-func (hd *Hyperdrive) Update(wTime, elapsed float64, rf *RefFrame, ents map[Id]bool) error {
-	if !rf.IsRoot() {
-		return nil
-	}
+func (hd *Hyperdrive) Update(wTime, elapsed float64, rf *RefFrame) error {
+	log.Debug("Hyperdrive.Update")
 
-	for e, _ := range ents {
-		hs := S.HSC[e]
-		if hs == nil {
-			continue
-		}
-
-		if hs.TargetTime < wTime {
-			// exit hyperdrive at destination, even if user sent exit action
-			// since last update
-
-			// TODO: how to retrieve / instantiate target ref frame
-			//to := &RefFrame{}
-			//updateEntityRefFrame(e, rf)
-
-			S.ORBC[e] = hs.Target.DefaultOrbit()
-			delete(S.HSC, e)
-			continue
-		}
-
-		if hs.Exited {
-			panic("todo")
-			// TODO: check if local frame exists
-			// TODO: disallow hyperdrive through ref frames like star systems
-			// TODO: galactic coll det/resp - interstellar clouds, etc
-			//delete(S.HSC, e)
-			//continue
+	for e, _ := range S.HotEnts[rf] {
+		if S.Hyperspace[e] != nil {
+			updateHyperdrive(wTime, elapsed, rf, e)
 		}
 	}
 
 	return nil
+}
+
+func updateHyperdrive(wTime, elapsed float64, rf *RefFrame, e Id) {
+	hs := S.Hyperspace[e]
+	if hs.TargetTime < wTime {
+		// exit hyperdrive at destination, even if user sent exit action
+		// since last update
+
+		// TODO: how to retrieve / instantiate target ref frame
+		//to := &RefFrame{}
+		//updateEntityRefFrame(e, rf)
+
+		S.Orb[e] = hs.Target.DefaultOrbit()
+		delete(S.Hyperspace, e)
+	}
+
+	if hs.Exited {
+		panic("todo")
+		// TODO: check if local frame exists
+		// TODO: disallow hyperdrive through ref frames like star systems
+		// TODO: galactic coll det/resp - interstellar clouds, etc
+		//delete(S.HSC, e)
+		//continue
+	}
+}
+
+func (hd *Hyperdrive) IsHotPostUpdate(e Id) bool {
+	return S.Hyperspace[e] != nil
 }

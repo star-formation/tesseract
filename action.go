@@ -83,7 +83,7 @@ type ActionRotate struct {
 }
 
 func (a *ActionRotate) Execute() error {
-	max := S.SCC[a.entity].CMGTorqueCap()
+	max := S.ShipClass[a.entity].CMGTorqueCap()
 	if a.t.X > max.X || a.t.Y > max.Y || a.t.Z > max.Z {
 		return fmt.Errorf("torque %v %v %v larger than CMG cap %v %v %v", a.t.X, a.t.Y, a.t.Z, max.X, max.Y, max.Z)
 	}

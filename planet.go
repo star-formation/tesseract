@@ -17,6 +17,8 @@
 */
 package tesseract
 
+import "math"
+
 type Planet struct {
 	Entity Id
 	Mass   float64
@@ -27,6 +29,19 @@ type Planet struct {
 
 	SurfaceGravity float64
 	Atmosphere     *Atmosphere
+}
+
+// DefaultOrbit returns a circular, prograde orbit 100km above a planet's
+// surface or above its atmosphere (if it has one).
+func (p *Planet) DefaultOrbit() *OE {
+	e, i, Ω, ω, θ := 0.0, 0.0, 0.0, 0.0, 0.0
+	μ := GravitationalConstant * p.Mass * earthMass
+	r := 100000.0
+	if p.Atmosphere != nil {
+		r += p.Atmosphere.Height
+	}
+	h := math.Sqrt((r + r*e*math.Cos(θ)) * μ)
+	return &OE{h: h, μ: μ, e: e, i: i, Ω: Ω, ω: ω, θ: θ}
 }
 
 // https://en.wikipedia.org/wiki/Gravity_of_Earth#Altitude

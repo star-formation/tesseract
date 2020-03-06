@@ -19,6 +19,8 @@ package tesseract
 
 import (
 	"encoding/json"
+
+	"github.com/ethereum/go-ethereum/log"
 )
 
 // Dev/Test global in-memory game state.  Used to simplify
@@ -27,10 +29,6 @@ import (
 // The state will likely go through many iterations before it's clear
 // how to best encode and optimize it for merkle trees/proofs
 // in the outer blockchain layer.
-type Mobile struct {
-	V   *V3         // velocity
-	FGs *[]ForceGen // force/torque generators
-}
 
 // If an object can rotate it has an inertia tensor
 type Rotational struct {
@@ -43,91 +41,77 @@ type Rotational struct {
 var S *State
 
 type State struct {
-	MB *MessageBus
-	AB *MessageBus
+	MsgBus    *MessageBus
+	ActionBus *MessageBus
 
-	EntCount uint64
+	EntCount  uint64
+	EntFrames map[Id]*RefFrame
 
-	EntsInFrames map[*RefFrame]map[Id]bool
+	HotEnts  map[*RefFrame]map[Id]struct{}
+	IdleEnts map[*RefFrame]map[Id]struct{}
 
-	// TODO: track frames one level below root
-	// TODO: think about search, log N complexity
-	GalacticFrames map[Id]*RefFrame
+	IdleSince map[Id]float64
 
 	// Hyperspace component holds data used by the Hyperdrive System
-	HSC map[Id]*Hyperspace
+	Hyperspace map[Id]*Hyperspace
 
-	// TODO: consolidate
-	StarC map[Id]*Star
-	Stars map[string]*Star
+	StarsById   map[Id]*Star
+	StarsByName map[string]*Star
 
-	AllSectors map[string]*Sector
+	Sectors map[string]*Sector
 
 	//
 	// Physics Components
 	//
 	// Mass component holds float64 values
-	MassC map[Id]*float64
+	Mass map[Id]*float64
 
 	// Position and Velocity components holds 3x1 vectors
-	PC map[Id]*V3
+	Pos map[Id]*V3
+	Vel map[Id]*V3
 
 	// Orbit Component holds Keplerian Orbital Elements
-	ORBC map[Id]*OE
+	Orb map[Id]*OE
 
 	// Orientation Component holds quaternions
-	ORIC map[Id]*Q
+	Ori map[Id]*Q
 
-	// Holds velocity and force generators for movable entities
-	MC map[Id]Mobile
+	// Holds force/torque generators for movable entities
+	ForceGens map[Id][]ForceGen
 
 	// Holds rotational data for entities that can rotate
-	RC map[Id]Rotational
+	Rot map[Id]*Rotational
 
-	// TODO: for now all shapes are perfect bounding spheres
-	// Sphere Radius Component
-	SRC map[Id]*float64
-
-	// Cargo Objects Component (entities in a cargo bay)
-	COC map[Id][]Id
-
-	// Volume Component
-	VOC map[Id]*float64
-
-	// Total Aerodynamic Lift and Drag Coefficients
-	// These change depending on attached modules and player skills
-	// TODO: split into subsonic, supersonic, hypersonic
-	AeroLiftCoef map[Id]*float64
-	AeroDragCoef map[Id]*float64
-
-	//
-	// Ship Class Component
-	///
-	SCC map[Id]ShipClass
+	// Holds ship class data
+	ShipClass map[Id]ShipClass
 }
 
 func ResetState() {
 	s := new(State)
 
 	channels := make([]chan<- []byte, 0)
-	s.MB = &MessageBus{channels}
+	s.MsgBus = &MessageBus{channels}
 	channels2 := make([]chan<- []byte, 0)
-	s.AB = &MessageBus{channels2}
+	s.ActionBus = &MessageBus{channels2}
 
-	s.EntsInFrames = make(map[*RefFrame]map[Id]bool, 0)
-	s.GalacticFrames = make(map[Id]*RefFrame, 0)
-	s.HSC = make(map[Id]*Hyperspace, 0)
-	s.StarC = make(map[Id]*Star, 0)
-	s.Stars = make(map[string]*Star, 0)
-	s.AllSectors = make(map[string]*Sector, 0)
-	s.MassC = make(map[Id]*float64, 0)
-	s.PC = make(map[Id]*V3, 0)
-	s.ORBC = make(map[Id]*OE, 0)
-	s.ORIC = make(map[Id]*Q, 0)
-	s.MC = make(map[Id]Mobile, 0)
-	s.RC = make(map[Id]Rotational, 0)
-	s.SRC = make(map[Id]*float64, 0)
-	s.SCC = make(map[Id]ShipClass, 0)
+	s.EntFrames = make(map[Id]*RefFrame, 0)
+
+	s.HotEnts = make(map[*RefFrame]map[Id]struct{}, 0)
+	s.IdleEnts = make(map[*RefFrame]map[Id]struct{}, 0)
+	s.IdleSince = make(map[Id]float64, 0)
+
+	s.Hyperspace = make(map[Id]*Hyperspace, 0)
+	s.StarsById = make(map[Id]*Star, 0)
+	s.StarsByName = make(map[string]*Star, 0)
+	s.Sectors = make(map[string]*Sector, 0)
+	s.Mass = make(map[Id]*float64, 0)
+	s.Pos = make(map[Id]*V3, 0)
+	s.Vel = make(map[Id]*V3, 0)
+	s.Orb = make(map[Id]*OE, 0)
+	s.Ori = make(map[Id]*Q, 0)
+	s.ForceGens = make(map[Id][]ForceGen, 0)
+	s.Rot = make(map[Id]*Rotational, 0)
+	s.ShipClass = make(map[Id]ShipClass, 0)
 	S = s
 }
 
@@ -136,27 +120,46 @@ func (s *State) NewEntity() Id {
 	return Id(s.EntCount)
 }
 
+func (s *State) SetHot(e Id, rf *RefFrame) {
+	s.ensureEntAlloc(rf)
+	s.HotEnts[rf][e] = struct{}{}
+	delete(s.IdleEnts[rf], e)
+}
+
+func (s *State) SetIdle(e Id, rf *RefFrame, since float64) {
+	s.ensureEntAlloc(rf)
+	delete(s.HotEnts[rf], e)
+	s.IdleEnts[rf][e] = struct{}{}
+	s.IdleSince[e] = since
+}
+
+func (s *State) ensureEntAlloc(rf *RefFrame) {
+	if s.HotEnts[rf] == nil {
+		s.HotEnts[rf] = make(map[Id]struct{}, 1)
+	}
+	if s.IdleEnts[rf] == nil {
+		s.IdleEnts[rf] = make(map[Id]struct{}, 1)
+	}
+}
+
 func (s *State) AddStar(star *Star, pos *V3) {
-	s.PC[star.Entity] = pos
-	s.StarC[star.Entity] = star
-	s.Stars[star.Body.Name] = star
+	s.Pos[star.Entity] = pos
+	s.StarsById[star.Entity] = star
+	s.StarsByName[star.Body.Name] = star
+
+	s.SetIdle(star.Entity, S.EntFrames[star.Entity], 0)
 }
-
-/*
-func (s *State) NewEntity(e Id) {
-	s.ORIC[e] = new(Q)
-
-	fgs := make([]ForceGen, 0)
-	S.MC[e] = Mobile{new(V3), &fgs}
-
-	s.RC[e] = Rotational{new(V3), new(M3), new(M3), new(M4)}
-}
-*/
 
 func (s *State) AddForceGen(e Id, fg ForceGen) {
-	*(s.MC[e].FGs) = append(*(s.MC[e].FGs), fg)
+	s.ForceGens[e] = append(s.ForceGens[e], fg)
+	rf := s.EntFrames[e]
+	log.Debug("FUNK", "rf", rf)
+	s.SetHot(e, rf)
 }
 
+//
+// JSON Encoding
+//
 type EntJSON struct {
 	Id  Id       `json: "id"`
 	Mas *float64 `json: "mass"`
@@ -176,14 +179,14 @@ type RefFrameJSON struct {
 func (s *State) MarshalJSON() ([]byte, error) {
 	rfJSONs := make([]RefFrameJSON, 0)
 	rfJSON := RefFrameJSON{}
-	for eId, mass := range s.MassC {
+	for eId, mass := range s.Mass {
 		entJSON := EntJSON{
 			eId,
 			mass,
-			s.PC[eId],
-			s.MC[eId].V,
-			s.ORIC[eId],
-			s.RC[eId].R,
+			s.Pos[eId],
+			s.Vel[eId],
+			s.Ori[eId],
+			s.Rot[eId].R,
 		}
 		rfJSON.Ents = append(rfJSON.Ents, entJSON)
 	}
