@@ -22,6 +22,7 @@ import (
 	"math"
 )
 
+// Types and functions for Orbital Mechanics.
 //
 // NOTE: Unless otherwise noted, referenced equations, algorithms, tables,
 //       chapters and examples are from reference [1].
@@ -47,13 +48,17 @@ import (
 // ω: Argument of Periapsis
 // θ: True Anomaly
 // μ: Standard gravitational parameter of the primary
-//
 type OE struct {
 	h, i, Ω, e, ω, θ, μ float64
 }
 
 func (o *OE) Debug() {
-	fmt.Printf(" h: %f\n i: %f\n Ω: %f\n e: %f\n ω: %f\n θ: %f\n μ: %f\n",
+	fmt.Printf("h: %f i: %f Ω: %f e: %f ω: %f θ: %f μ: %f\n",
+		o.h, RadToDeg(o.i), RadToDeg(o.Ω), o.e, RadToDeg(o.ω), RadToDeg(o.θ), o.μ)
+}
+
+func (o *OE) Fmt() string {
+	return fmt.Sprintf("h: %.14g i: %.12f Ω: %.12f e: %.12f ω: %.12f θ: %.12f μ: %.4g",
 		o.h, RadToDeg(o.i), RadToDeg(o.Ω), o.e, RadToDeg(o.ω), RadToDeg(o.θ), o.μ)
 }
 
@@ -105,6 +110,7 @@ func (o *OE) Altitude() float64 {
 	}
 }
 
+// Speed returns the orbital speed of the orbiter relative to the primary.
 // https://en.wikipedia.org/wiki/Vis-viva_equation
 func (o *OE) Speed() float64 {
 	μ := o.μ
@@ -126,16 +132,16 @@ func (o *OE) Period() float64 {
 	return math.Inf(1) // positive infinity
 }
 
-// TrueAnomalyAtTime returns the orbit's true anomaly in radians at time t1
-// using t0 as the time of the current true anomaly.
-// TrueAnomalyAtTime panics if t1 is not greater than t0.
+// TrueAnomalyFromTime returns the orbit's true anomaly in radians at time t1
+// using t0 as the time of the set true anomaly.
+// TrueAnomalyFromTime panics if t1 is not greater than t0.
 func (o *OE) TrueAnomalyFromTime(t0, t1 float64) float64 {
 	if t1 <= t0 {
 		panic("t1 must be greater than t0")
 	}
 
-	var θ float64
 	h, e, μ := o.h, o.e, o.μ
+	var θ float64
 
 	switch {
 	case e == 0: // circular
@@ -174,6 +180,7 @@ func (o *OE) TrueAnomalyFromTime(t0, t1 float64) float64 {
 	return NormalizeAngle(θ)
 }
 
+// TimeFromTrueAnomaly returns the time for a given true anomaly.
 func (o *OE) TimeFromTrueAnomaly(θ float64) float64 {
 	// TODO: normalize / mod
 	if θ < 0 || θ > twoPi {
@@ -267,7 +274,10 @@ func StateVectorToOrbital(r, v *V3, μ float64) *OE {
 	nodeLine := new(V3).VectorProduct(KHat, h)
 	nodeLineMag := nodeLine.Magnitude()
 
-	Ω := math.Acos(nodeLine.X / nodeLineMag)
+	Ω := 0.0
+	if nodeLine.X != 0.0 {
+		Ω = math.Acos(nodeLine.X / nodeLineMag)
+	}
 	if nodeLine.Y < 0 {
 		Ω = 2*math.Pi - Ω
 	}
@@ -280,7 +290,10 @@ func StateVectorToOrbital(r, v *V3, μ float64) *OE {
 	eVec := new(V3).MulScalar(x3, 1/μ)
 	e := eVec.Magnitude()
 
-	ω := math.Acos(nodeLine.ScalarProduct(eVec) / (nodeLineMag * e))
+	ω := 0.0
+	if nodeLineMag != 0.0 {
+		ω = math.Acos(nodeLine.ScalarProduct(eVec) / (nodeLineMag * e))
+	}
 	if eVec.Z < 0 {
 		ω = 2*math.Pi - ω
 	}

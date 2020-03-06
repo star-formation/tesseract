@@ -23,7 +23,7 @@ import (
 
 // Exact values in these tests often differ slightly from the
 // calculations in [1] as the book rounds intermediate and final values to
-// only a few decimals but we retain 64 bit precision in all calculations.
+// only a few decimals whereas we retain 64 bit precision in all calculations.
 
 // TODO: add test data from Section 4.4
 
