@@ -15,3 +15,7 @@
 
 # error logs from tests / debug runs
 *errors.json
+
+*.png
+
+cmd/starburst/starburst
