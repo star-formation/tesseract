@@ -116,4 +116,14 @@ var (
 	massHistogramFile = "data/Galaxy_stellar_mass_histogram.txt"
 
 	exoplanetEUCatalogFile = "data/exoplanet.eu_catalog_2019_12_02.csv"
+
+	//
+	// Static Game State
+	//
+	rootRF = &RefFrame{
+		Parent:      nil,
+		Pos:         nil,
+		Orbit:       nil,
+		Orientation: nil,
+	}
 )

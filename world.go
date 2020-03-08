@@ -51,16 +51,33 @@ func DevWorld(testSeed uint64) {
 		//&Hyperdrive{},
 	}
 	actionChan := make(chan Action, 10)
+	subChan := make(chan *EntitySub, 10)
 	GE = &GameEngine{
 		systems:    systems,
 		actionChan: actionChan,
+		subChan:    subChan,
 	}
+
+	go func() {
+		time.Sleep(2 * time.Second)
+		dataChan, _ := NewEntitySub(2)
+		for {
+			select {
+			case d, ok := <-dataChan:
+				if ok {
+					log.Debug("EntitySub", "len(dataChan)", len(dataChan), "d", string(d))
+				} else {
+					log.Debug("EntitySub dataChan closed")
+					return
+				}
+			}
+		}
+	}()
 
 	GE.Loop()
 }
 
 func DevWorldStars() {
-	solSecPos := &V3{0.0, 0.0, (4.1 * sectorSize) / gridUnit}
 	solPos := &V3{0.1, 0.1, (4.2 * sectorSize) / gridUnit}
 	solLum := starLum(1.0)
 	solTemp := starSurfaceTemp(solLum, 1.0)
@@ -80,22 +97,7 @@ func DevWorldStars() {
 		SurfaceTemp:  solTemp,
 	}
 
-	rootRF := &RefFrame{
-		Parent:      nil,
-		Pos:         nil,
-		Orbit:       nil,
-		Orientation: nil,
-	}
-
-	solRF := &RefFrame{
-		Parent:      rootRF,
-		Pos:         solSecPos,
-		Orbit:       nil,
-		Orientation: nil, // TODO
-	}
-	S.EntFrames[sol.Entity] = solRF
-
-	solSector := GetSector(solRF.Pos)
+	solSector := GetSector(solPos)
 	solSector.addStarFixed(sol, solPos)
 	solSector.Mapped = 1.0
 

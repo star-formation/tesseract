@@ -18,7 +18,6 @@
 package tesseract
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 	//"github.com/ethereum/go-ethereum/log"
@@ -39,39 +38,26 @@ type Action interface {
 // TODO: refactor and document security assumptions and input validation
 // in diff layers.
 // TODO: for dev/test we use a simple JSON schema
-func HandleMsg(msg []byte) error {
-	//log.Debug("HandleMsg", "msg", string(msg))
-	var j map[string]interface{}
-	err := json.Unmarshal(msg, &j)
+func HandleAction(j map[string]interface{}) error {
+	e, err := strconv.ParseUint(j["entity"].(string), 10, 64)
 	if err != nil {
 		return err
 	}
-	switch j["action"] {
-	case "getGlobalState":
-		return nil
-	case "rotate", "engine":
-		e, err := strconv.ParseUint(j["entity"].(string), 10, 64)
-		if err != nil {
-			return err
-		}
-		params := j["params"].(map[string]interface{})
-		duration := params["duration"].(float64)
+	params := j["params"].(map[string]interface{})
+	duration := params["duration"].(float64)
 
-		var ar Action
-		if j["action"] == "rotate" {
-			torque := params["force"].(map[string]interface{})
-			x := torque["x"].(float64)
-			y := torque["y"].(float64)
-			z := torque["z"].(float64)
-			ar = &ActionRotate{Id(e), &V3{x, y, z}, duration}
-		} else {
-			f := params["force"].(float64)
-			ar = &ActionEngineThrust{Id(e), f, duration}
-		}
-		GE.actionChan <- ar
-	default:
-		return fmt.Errorf("unsupported message %v", string(msg))
+	var ar Action
+	if j["action"] == "rotate" {
+		torque := params["force"].(map[string]interface{})
+		x := torque["x"].(float64)
+		y := torque["y"].(float64)
+		z := torque["z"].(float64)
+		ar = &ActionRotate{Id(e), &V3{x, y, z}, duration}
+	} else {
+		f := params["force"].(float64)
+		ar = &ActionEngineThrust{Id(e), f, duration}
 	}
+	GE.actionChan <- ar
 
 	return nil
 }

@@ -34,7 +34,7 @@ func (p *Physics) Init() error {
 }
 
 func (p *Physics) Update(worldTime, elapsed float64, rf *RefFrame) error {
-	log.Debug("Physics ====")
+	//log.Debug("Physics ====")
 	for e, _ := range S.HotEnts[rf] {
 		// TODO: after initial orbit debug, add len == 0 check
 		if S.ForceGens[e] != nil && len(S.ForceGens[e]) > 0 {
@@ -56,15 +56,15 @@ func (p *Physics) IsHotPostUpdate(e Id) bool {
 func updateClassicalMechanics(worldTime, elapsed float64, rf *RefFrame, e Id) {
 	var pos, vel *V3
 	if S.Orb[e] != nil {
-		log.Debug("Physics", "oe", S.Orb[e].Fmt())
+		log.Debug("updateClassicalMechanics", "oe", S.Orb[e].Fmt())
 		pos, vel = S.Orb[e].OrbitalToStateVector()
-		log.Debug("Physics", "pos", pos.Fmt(), "vel", vel.Fmt())
+		log.Debug("updateClassicalMechanics", "pos", pos.Fmt(), "vel", vel.Fmt())
 	} else {
 		pos = S.Pos[e]
 		vel = S.Vel[e]
 	}
 
-	log.Debug("Physics", "e", e, "len(fgs)", len(S.ForceGens[e]))
+	log.Debug("updateClassicalMechanics", "e", e, "len(fgs)", len(S.ForceGens[e]))
 
 	// update force generators
 	linearForce, torque := new(V3), new(V3)
@@ -83,7 +83,7 @@ func updateClassicalMechanics(worldTime, elapsed float64, rf *RefFrame, e Id) {
 	}
 
 	// TODO: skip updates if resulting linearForce and/or torque is zero.
-	log.Debug("Physics", "lf", linearForce, "tq", torque)
+	log.Debug("updateClassicalMechanics", "lf", linearForce, "tq", torque)
 
 	if !linearForce.IsZero() {
 		// update linear acceleration from forces
@@ -120,7 +120,7 @@ func updateClassicalMechanics(worldTime, elapsed float64, rf *RefFrame, e Id) {
 
 	if S.Orb[e] != nil {
 		S.Orb[e] = StateVectorToOrbital(pos, vel, S.Orb[e].μ)
-		log.Debug("Physics", "oe2", S.Orb[e].Fmt())
+		log.Debug("updateClassicalMechanics", "oe2", S.Orb[e].Fmt())
 	} else {
 		S.Pos[e] = pos
 		S.Vel[e] = vel

@@ -18,7 +18,6 @@
 package tesseract
 
 import (
-	"encoding/json"
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -46,6 +45,7 @@ import (
 type GameEngine struct {
 	systems    []System
 	actionChan chan Action
+	subChan    chan *EntitySub
 }
 
 var GE *GameEngine
@@ -54,8 +54,6 @@ func (ge *GameEngine) Loop() error {
 	var err error
 	var elapsed time.Duration
 	var start, last, t0, t1 time.Time
-
-	var j []byte
 
 	start = time.Now()
 	last = start
@@ -76,23 +74,33 @@ func (ge *GameEngine) Loop() error {
 			last = t0
 		}
 
+		err = ge.handleUserActions()
+		if err != nil {
+			break
+		}
+
+		// TODO: ge.handleTimerActions()
+
 		log.Debug("engine.Loop", "c", debug, "run", time.Now().Sub(start))
 		err = ge.update(worldTime.Seconds(), elapsed.Seconds())
 		if err != nil {
 			break
 		}
 
-		err = ge.handleUserActions()
-		if err != nil {
-			break
+		for len(S.EntitySubsCloseChan) > 0 {
+			es := <-S.EntitySubsCloseChan
+			delete(S.EntitySubs, es)
 		}
 
-		// TODO: per client
-		j, err = json.Marshal(S)
-		if err != nil {
-			break
+		// TODO: auth and throttling
+		for len(ge.subChan) > 0 {
+			es := <-ge.subChan
+			S.EntitySubs[es] = struct{}{}
 		}
-		S.MsgBus.Post(j)
+
+		for es, _ := range S.EntitySubs {
+			es.Update()
+		}
 	}
 
 	log.Info("engine.Loop", "err", err)
@@ -106,6 +114,7 @@ func (ge *GameEngine) update(worldTime, elapsed float64) error {
 	}
 
 	for rf, _ := range S.HotEnts {
+		//log.Debug("GE.update", "rf.Pos", rf.Pos, "rf.OE", rf.Orbit)
 		for _, sys := range ge.systems {
 			err := sys.Update(worldTime, elapsed, rf)
 			if err != nil {

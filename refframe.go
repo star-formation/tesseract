@@ -62,8 +62,7 @@ type RefFrame struct {
 	Radius float64
 
 	// Rotation is unsupported for now.
-
-	DragCoef1, DragCoef2 float64
+	// DragCoef1, DragCoef2 float64
 }
 
 func (rf *RefFrame) IsRoot() bool {

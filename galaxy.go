@@ -73,7 +73,14 @@ func (s *Sector) Traverse() {
 }
 
 func (s *Sector) addStarFixed(newStar *Star, pos *V3) {
-	// TODO: consolidate
+	newStarRF := &RefFrame{
+		Parent:      rootRF,
+		Pos:         pos,
+		Orbit:       nil,
+		Orientation: nil, // TODO
+	}
+	S.EntFrames[newStar.Entity] = newStarRF
+
 	s.Stars = append(s.Stars, newStar)
 	S.AddStar(newStar, pos)
 }
@@ -107,10 +114,7 @@ NewPos:
 			}
 		}
 	}
-
-	// TODO: consolidate
-	s.Stars = append(s.Stars, newStar)
-	S.AddStar(newStar, p)
+	s.addStarFixed(newStar, p)
 }
 
 // getAdjacents returns the 26 cube sectors adjacent to s
@@ -184,31 +188,6 @@ func GetSector(pos *V3) *Sector {
 	}
 }
 
-func (s *Sector) Debug() {
-	fmt.Printf("%s: mapped: %.2f star count: %d\n", s.Key(), s.Mapped, len(s.Stars))
-}
-
-func DebugSectors(onlyMapped bool) {
-	keys := []string{}
-	for key, s := range S.Sectors {
-		if onlyMapped && s.Mapped == 0.0 {
-			continue
-		}
-		keys = append(keys, key)
-	}
-
-	sort.Strings(keys)
-
-	for _, k := range keys {
-		s := S.Sectors[k]
-		fmt.Printf("%s ==== SECTOR: %.2f mapped, %d stars:\n", k, s.Mapped, len(s.Stars))
-		for _, st := range s.Stars {
-			fmt.Printf("%s %s Class: %s\n", sectorKey(S.Pos[st.Entity], false), string(st.SpectralType), st.Body.Name)
-		}
-	}
-
-}
-
 func (s *Sector) Key() string {
 	return sectorKey(s.Corner, true)
 }
@@ -270,4 +249,32 @@ func NewGalaxy() {
 
 	// When entering a cube, X% of its stars are instantly revealed.
 	// Then an additional X% every Y minutes.
+}
+
+//
+// Debug
+//
+func (s *Sector) Debug() {
+	fmt.Printf("%s: mapped: %.2f star count: %d\n", s.Key(), s.Mapped, len(s.Stars))
+}
+
+func DebugSectors(onlyMapped bool) {
+	keys := []string{}
+	for key, s := range S.Sectors {
+		if onlyMapped && s.Mapped == 0.0 {
+			continue
+		}
+		keys = append(keys, key)
+	}
+
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		s := S.Sectors[k]
+		fmt.Printf("%s ==== SECTOR: %.2f mapped, %d stars:\n", k, s.Mapped, len(s.Stars))
+		for _, st := range s.Stars {
+			fmt.Printf("%s %s Class: %s\n", sectorKey(S.Pos[st.Entity], false), string(st.SpectralType), st.Body.Name)
+		}
+	}
+
 }

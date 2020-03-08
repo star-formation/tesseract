@@ -52,6 +52,9 @@ type State struct {
 
 	IdleSince map[Id]float64
 
+	EntitySubs          map[*EntitySub]struct{}
+	EntitySubsCloseChan chan *EntitySub
+
 	// Hyperspace component holds data used by the Hyperdrive System
 	Hyperspace map[Id]*Hyperspace
 
@@ -94,6 +97,9 @@ func ResetState() {
 	channels2 := make([]chan<- []byte, 0)
 	s.ActionBus = &MessageBus{channels2}
 
+	s.EntitySubs = make(map[*EntitySub]struct{}, 0)
+	s.EntitySubsCloseChan = make(chan *EntitySub, 100)
+
 	s.EntFrames = make(map[Id]*RefFrame, 0)
 
 	s.HotEnts = make(map[*RefFrame]map[Id]struct{}, 0)
@@ -134,6 +140,9 @@ func (s *State) SetIdle(e Id, rf *RefFrame, since float64) {
 }
 
 func (s *State) ensureEntAlloc(rf *RefFrame) {
+	if rf == nil {
+		panic("nil rf")
+	}
 	if s.HotEnts[rf] == nil {
 		s.HotEnts[rf] = make(map[Id]struct{}, 1)
 	}
@@ -155,6 +164,10 @@ func (s *State) AddForceGen(e Id, fg ForceGen) {
 	rf := s.EntFrames[e]
 	log.Debug("FUNK", "rf", rf)
 	s.SetHot(e, rf)
+}
+
+func (s *State) AddEntitySub(e Id) {
+	//if S.EntitySubs[e]
 }
 
 //
