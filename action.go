@@ -19,7 +19,6 @@ package tesseract
 
 import (
 	"fmt"
-	"strconv"
 	//"github.com/ethereum/go-ethereum/log"
 )
 
@@ -30,36 +29,6 @@ import (
 // such actions are always considered authenticated.
 type Action interface {
 	Execute() error
-}
-
-// The input to this function is raw bytes from other layers, e.g.
-// the binary payload of a WebSocket message.  As such these bytes have
-// not yet been validated, and may be malicious.
-// TODO: refactor and document security assumptions and input validation
-// in diff layers.
-// TODO: for dev/test we use a simple JSON schema
-func HandleAction(j map[string]interface{}) error {
-	e, err := strconv.ParseUint(j["entity"].(string), 10, 64)
-	if err != nil {
-		return err
-	}
-	params := j["params"].(map[string]interface{})
-	duration := params["duration"].(float64)
-
-	var ar Action
-	if j["action"] == "rotate" {
-		torque := params["force"].(map[string]interface{})
-		x := torque["x"].(float64)
-		y := torque["y"].(float64)
-		z := torque["z"].(float64)
-		ar = &ActionRotate{Id(e), &V3{x, y, z}, duration}
-	} else {
-		f := params["force"].(float64)
-		ar = &ActionEngineThrust{Id(e), f, duration}
-	}
-	GE.actionChan <- ar
-
-	return nil
 }
 
 type ActionRotate struct {

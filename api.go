@@ -19,83 +19,213 @@ package tesseract
 
 import (
 	"encoding/json"
+	"fmt"
+	"reflect"
+	"strconv"
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
 )
 
 const (
-	dataChanBufferSize = 10
-	subExpiry          = 4 * time.Second
+	toClientChanBufferSize = 10
+	apiSubExpiry           = 4 * time.Second
+
+	// Mandatory API fields:
+	keyCallType = "callType"
+	keyParams   = "params"
+
+	// The API has three types of calls:
+	// 1. actions: see action.go
+	// 2. getState: read-only state getters
+	// 3. subState: subscribe to future state deltas
+	valueAction   = "action"
+	valueGetState = "getState"
+	valueSubState = "subState"
+
+	// actions
+	keyActionName = "actionName"
+	valueRotate   = "rotate"
+	valueThrust   = "thrust"
+
+	// getState
+	keyStateType = "stateType"
+	valueEnvFull = "envFull"
+
+	// Common parameters
+	keyEntity   = "entity"
+	keyDuration = "duration"
+	keyForce    = "force"
+	keyX        = "x"
+	keyY        = "y"
+	keyZ        = "z"
 )
 
-type EntitySub struct {
-	entity        Id
-	dataChan      chan []byte
-	keepAliveChan chan bool
-}
-
-type EntitySubData struct {
-	OE *OE
-
-	Pos *V3
-	Vel *V3
-
-	Ori *Q
-	Rot *V3
-}
-
-func (es *EntitySub) Update() {
-	e := es.entity
-	data := EntitySubData{
-		OE:  S.Orb[e],
-		Pos: S.Pos[e],
-		Vel: S.Vel[e],
-		Ori: S.Ori[e],
-		Rot: S.Rot[e].R, // TODO: include body/world transform?
-	}
-
-	b, err := json.Marshal(data)
-	if err != nil {
-		panic(err)
-	}
-	es.dataChan <- b
-}
-
-func NewEntitySub(e Id) (<-chan []byte, chan<- bool) {
-	dataChan := make(chan []byte, dataChanBufferSize)
+// DevAPISub must be called before DevAPISend.
+// It returns a data channel and a keepalive channel.
+//
+// The data channel is used for data that is sent to the client.
+// The game engine writes all API responses and subscription events
+// to the data channel.
+//
+// The game engine terminates the API sub and data channel if
+// 1. It has not sent anything to the data channel and not received
+//    a signal on the keepalive channel within apiSubExpiry time.
+// 2. OR any API params from the client are invalid
+// 3. OR an error is encountered during processing a call.
+func DevAPISub() (<-chan []byte, chan<- bool, error) {
+	toClientChan := make(chan []byte, toClientChanBufferSize)
 	keepAliveChan := make(chan bool, 1)
-	es := &EntitySub{e, dataChan, keepAliveChan}
-
-	GE.subChan <- es
-	S.EntitySubs[es] = struct{}{}
+	keepAliveChan <- true
 
 	unsub := func() {
-		close(dataChan)
+		log.Info("APISub unsub")
+		close(toClientChan)
 		close(keepAliveChan)
-		S.EntitySubsCloseChan <- es
 	}
-
-	keepAliveChan <- true
 
 	go func() {
 		for {
 			select {
 			case ok := <-keepAliveChan:
+				log.Info("APISub", "keepAliveChan", ok)
 				if ok {
-					time.Sleep(subExpiry)
+					time.Sleep(apiSubExpiry)
 				} else {
-					log.Info("Unsubscribe: keepAlive=false")
 					unsub()
 					return
 				}
 			default:
-				log.Info("Unsubscribe: expired")
+				log.Info("APISub keepAliveChan expired")
 				unsub()
 				return
 			}
 		}
 	}()
 
-	return dataChan, keepAliveChan
+	return toClientChan, keepAliveChan, nil
+}
+
+// DevAPISend calls the game engine API.
+// fields is a map of string attributes to values of any type.
+// toClientChan is a data channel to which will be sent
+// all API responses and all API subscription event data.
+// TODO: make all type assertions safe
+func DevAPISend(fields map[string]interface{}, toClientChan chan<- []byte) error {
+	// Decode mandatory fields
+	callType, ok := fields[keyCallType].(string)
+	if !ok {
+		return invalid(keyCallType, fields[keyCallType])
+	}
+
+	params, ok := fields[keyParams].(map[string]interface{})
+	if !ok {
+		return invalid(keyParams, fields[keyParams])
+	}
+
+	switch callType {
+	case valueAction:
+		return handleAction(params)
+	case valueGetState:
+		return handleGetState(params, toClientChan)
+	case valueSubState:
+		return handleSubState(params, toClientChan)
+	default:
+		return invalid(keyCallType, callType)
+	}
+}
+
+/*
+	e, err := strconv.ParseUint(fields[keyEntity].(string), 10, 64)
+	if err != nil {
+		return err
+	}
+	params := fields[keyParams].(map[string]interface{})
+	duration := params[keyDuration].(float64)
+
+	var ar Action
+	if fields[keyAction] == keyRotate {
+		torque := params[keyForce].(map[string]interface{})
+		x := torque[keyX].(float64)
+		y := torque[keyY].(float64)
+		z := torque[keyZ].(float64)
+		ar = &ActionRotate{Id(e), &V3{x, y, z}, duration}
+	} else {
+		f := params[keyForce].(float64)
+		ar = &ActionEngineThrust{Id(e), f, duration}
+	}
+	GE.actionChan <- ar
+
+	return nil
+}
+*/
+func handleAction(params map[string]interface{}) error {
+	eStr, ok := params[keyEntity].(string)
+	if !ok {
+		return invalid(keyEntity, params[keyEntity])
+	}
+	e, err := strconv.ParseUint(eStr, 10, 64)
+	if err != nil {
+		return err
+	}
+
+	actionName, ok := params[keyActionName].(string)
+	if !ok {
+		return invalid(actionName, params[keyActionName])
+	}
+
+	// TODO: make duration optional
+	duration, ok := params[keyDuration].(float64)
+	if !ok {
+		return invalid(keyDuration, params[keyDuration])
+	}
+
+	// TODO: safe field error handling
+	var ar Action
+	switch actionName {
+	case valueRotate:
+		torque := params[keyForce].(map[string]interface{})
+		x := torque[keyX].(float64)
+		y := torque[keyY].(float64)
+		z := torque[keyZ].(float64)
+		ar = &ActionRotate{Id(e), &V3{x, y, z}, duration}
+	case valueThrust:
+		f := params[keyForce].(float64)
+		ar = &ActionEngineThrust{Id(e), f, duration}
+	default:
+		return invalid(keyActionName, params[keyActionName])
+	}
+	GE.actionChan <- ar
+	return nil
+}
+
+func handleGetState(params map[string]interface{}, toClientChan chan<- []byte) error {
+	return nil
+}
+
+func handleSubState(params map[string]interface{}, toClientChan chan<- []byte) error {
+	// TODO
+	return nil
+}
+
+func invalid(k string, v interface{}) error {
+	return fmt.Errorf("invalid type or value for key: %s value: %s", k, reflect.TypeOf(v).String())
+}
+
+type EnvFull struct {
+	RefFrame *RefFrame
+	// TODO: starsystem
+}
+
+func sendEnvFull(e Id, toClientChan chan<- []byte) {
+	env := EnvFull{
+		RefFrame: S.EntFrames[e],
+	}
+
+	b, err := json.Marshal(env)
+	if err != nil {
+		panic(err)
+	}
+
+	toClientChan <- b
 }

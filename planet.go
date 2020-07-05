@@ -17,28 +17,55 @@
 */
 package tesseract
 
-import "math"
+import (
+	"bytes"
+	"encoding/csv"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"math"
+	"sort"
+	"strconv"
+)
+
+var (
+	PlanetMassHist   *Histogram
+	PlanetRadiusHist *Histogram
+)
+
+type PlanetBase uint8
+
+const (
+	Lava = iota
+	Scorched
+	World
+	Gas
+)
 
 type Planet struct {
 	Entity Id
-	Mass   float64
-	Radius float64
+	Body
+}
 
-	AxialTilt      float64
-	RotationPeriod float64
+func NewPlanet() *Planet {
+	p := &Planet{}
+	p.Body.Name = planetName()
+	return p
+}
 
-	SurfaceGravity float64
-	Atmosphere     *Atmosphere
+func planetName() string {
+	// TODO: number in system and possibly unique/rare name
+	return ""
 }
 
 // DefaultOrbit returns a circular, prograde orbit 100km above a planet's
-// surface or above its atmosphere (if it has one).
+// surface or above its atmosphere height (if it has one).
 func (p *Planet) DefaultOrbit() *OE {
 	e, i, Ω, ω, θ := 0.0, 0.0, 0.0, 0.0, 0.0
-	μ := GravitationalConstant * p.Mass * earthMass
+	μ := GravitationalConstant * p.Body.Mass * earthMass
 	r := 100000.0
-	if p.Atmosphere != nil {
-		r += p.Atmosphere.Height
+	if p.Body.Atmosphere != nil {
+		r += p.Body.Atmosphere.Height
 	}
 	h := math.Sqrt((r + r*e*math.Cos(θ)) * μ)
 	return &OE{h: h, μ: μ, e: e, i: i, Ω: Ω, ω: ω, θ: θ}
@@ -48,17 +75,17 @@ func (p *Planet) DefaultOrbit() *OE {
 // p.surface_gravity has been pre-calculated by world building scripts
 func (p *Planet) GravityAtAltitude(alt float64) float64 {
 	// TODO: for debugging...
-	if alt < -p.Radius {
+	if alt < -p.Body.Radius {
 		panic("kraken")
 	}
 
 	// TODO: handle negative altitude (caves, canyons, etc)
 	if alt < 0 {
-		return p.SurfaceGravity
+		return p.Body.SurfaceGravity
 	}
 
-	x := p.Radius / (p.Radius + alt)
-	return p.SurfaceGravity * (x * x)
+	x := p.Body.Radius / (p.Body.Radius + alt)
+	return p.Body.SurfaceGravity * (x * x)
 }
 
 // Where we lock X,Y,Z coords does not matter, as we do not yet have
@@ -66,4 +93,73 @@ func (p *Planet) GravityAtAltitude(alt float64) float64 {
 // planet's orientation 3D vector.
 func (p *Planet) GeodeticToCartesian(lat, lon float64) float64 {
 	return 0
+}
+
+// getExoplanetHistograms returns mass and radius histograms from
+// a CSV export of http://exoplanet.eu/catalog/
+func getExoplanetHistograms() (*Histogram, *Histogram) {
+	var err error
+	fileContent, err := ioutil.ReadFile(exoplanetEUCatalogFile)
+	if err != nil {
+		panic(err)
+	}
+
+	br := bytes.NewReader(fileContent)
+	csvReader := csv.NewReader(br)
+	csvReader.Comma = ','
+	csvReader.Comment = '#'
+	csvReader.FieldsPerRecord = 98
+
+	masses, radii := []float64{}, []float64{}
+	for {
+		r, err := csvReader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			panic(err)
+		}
+
+		if r[2] != "" {
+			mass, err := strconv.ParseFloat(r[2], 64)
+			if err != nil {
+				panic(err)
+			}
+			masses = append(masses, mass)
+		}
+
+		if r[8] != "" {
+			radius, err := strconv.ParseFloat(r[8], 64)
+			if err != nil {
+				panic(err)
+			}
+			radii = append(radii, radius)
+		}
+	}
+
+	fmt.Printf("masses: %d, radii: %d \n", len(masses), len(radii))
+
+	sort.Float64s(masses)
+	sort.Float64s(radii)
+
+	for j := 0; j < 24; j++ {
+		fmt.Printf("m: %.8f \n", masses[len(masses)-j-1])
+	}
+	for j := 0; j < 24; j++ {
+		fmt.Printf("m: %.8f \n", masses[j])
+	}
+
+	massCounts := make([]uint64, len(masses))
+	radiusCounts := make([]uint64, len(radii))
+
+	for i := 0; i < len(masses); i++ {
+		massCounts[i] = 1
+	}
+	for i := 0; i < len(radii); i++ {
+		radiusCounts[i] = 1
+	}
+
+	massHist := NewHistogram(masses, massCounts)
+	radiusHist := NewHistogram(radii, radiusCounts)
+	return massHist, radiusHist
 }

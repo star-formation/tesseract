@@ -19,14 +19,9 @@ package tesseract
 
 import (
 	"time"
-
-	"github.com/ethereum/go-ethereum/log"
 )
 
-func InitWorld() {
-}
-
-func DevWorld(testSeed uint64) {
+func initRand(testSeed uint64) {
 	seed := testSeed
 	if testSeed == 0 {
 		seed = uint64(time.Now().Nanosecond())
@@ -34,18 +29,56 @@ func DevWorld(testSeed uint64) {
 
 	r, _ := NewRand(seed)
 	Rand = r
+}
 
+func DevWorld2(testSeed uint64) {
+	// init/reset state
+	initRand(testSeed)
 	ResetState()
 
-	//for i := 0; i < 40; i++ {
-	//	fmt.Println(starName())
-	//}
-	DevWorldStars()
+	// our solar system and its galactic sector
+	// TODO: correct time
+	t := time.Now()
+	ss := SolarSystem(&t)
+	solPos := &V3{0.1, 0.1, auToGrid(4.2)}
+	S.Pos[ss.Star.Entity] = solPos
+	solSector := GetSector(solPos)
+	solSector.addStarSystemFixed(ss, solPos)
+	solSector.Mapped = 1.0
 	DebugSectors(true)
 
-	//DevHyperdrive()
-	DevShipOrbit()
+	// setup player ship
+	shipEnt := S.NewEntity()
+	shipClass := &WarmJet{}
 
+	var shipMassBase float64
+	shipMassBase = shipClass.MassBase()
+
+	shipIC := InertiaTensorCuboid(shipMassBase, 10, 10, 10)
+	shipIC.Inverse()
+
+	// add ship to state
+	S.ShipClass[shipEnt] = shipClass
+	S.Mass[shipEnt] = &shipMassBase
+	S.Ori[shipEnt] = new(Q)
+	S.Rot[shipEnt] = &Rotational{new(V3), new(M3), new(M3), new(M4)}
+	S.Rot[shipEnt].IITB = shipIC
+
+	fgs := make([]ForceGen, 0)
+	S.ForceGens[shipEnt] = fgs
+
+	// add player ship to Earth ref frame
+	S.EntFrames[shipEnt] = S.EntFrames[ss.Planets[2].Entity]
+	// set player ship orbit to low Earth orbit (LEO)
+	S.Orb[shipEnt] = ss.Planets[2].DefaultOrbit()
+	// TODO: ref frames and ship -> solar system links (for client API)
+	// TODO: for now, manually link ref frames here;
+	//       refactor after testing in client
+
+	startEngine()
+}
+
+func startEngine() {
 	systems := []System{
 		&Physics{},
 		//&Hyperdrive{},
@@ -58,33 +91,18 @@ func DevWorld(testSeed uint64) {
 		subChan:    subChan,
 	}
 
-	go func() {
-		time.Sleep(2 * time.Second)
-		dataChan, _ := NewEntitySub(2)
-		for {
-			select {
-			case d, ok := <-dataChan:
-				if ok {
-					log.Debug("EntitySub", "len(dataChan)", len(dataChan), "d", string(d))
-				} else {
-					log.Debug("EntitySub dataChan closed")
-					return
-				}
-			}
-		}
-	}()
-
 	GE.Loop()
 }
 
+/*
 func DevWorldStars() {
-	solPos := &V3{0.1, 0.1, (4.2 * sectorSize) / gridUnit}
+	solPos := &V3{0.1, 0.1, auToGrid(4.2)}
 	solLum := starLum(1.0)
 	solTemp := starSurfaceTemp(solLum, 1.0)
 	sol := &Star{
 		Entity: S.NewEntity(),
 		Body: Body{
-			Name:       "Sol",
+			Name:       "Sun",
 			Mass:       1.0,
 			Radius:     1.0,
 			Orbit:      nil,
@@ -96,24 +114,39 @@ func DevWorldStars() {
 		Luminosity:   solLum,
 		SurfaceTemp:  solTemp,
 	}
+	log.Debug("FUNKY", "sol.Entity", sol.Entity)
+	S.Pos[sol.Entity] = solPos
+
+	solarSystem := &StarSystem{
+		Entity:  S.NewEntity(),
+		Name:    "Sol",
+		Star:    sol,
+		Planets: nil, // TODO
+		Mapped:  1.0,
+	}
 
 	solSector := GetSector(solPos)
-	solSector.addStarFixed(sol, solPos)
+	solSector.addStarSystemFixed(solarSystem, solPos)
 	solSector.Mapped = 1.0
 
 	// traverse a few nearby sectors to get a few nearby stars
-	north1 := GetSector(&V3{0.0, 0.0, (5.1 * aupc) / gridUnit})
-	north2 := GetSector(&V3{0.0, 0.0, (6.1 * aupc) / gridUnit})
-	north3 := GetSector(&V3{0.0, 0.0, (7.1 * sectorSize) / gridUnit})
+	north1 := GetSector(&V3{0.0, 0.0, auToGrid(5.1)})
+	north2 := GetSector(&V3{0.0, 0.0, auToGrid(6.1)})
+	north3 := GetSector(&V3{0.0, 0.0, auToGrid(7.1)})
 
 	sectors := []*Sector{north1, north2, north3}
 	for _, s := range sectors {
 		for i := 0; i < 4; i++ {
 			s.Traverse()
 		}
+		for _, ss := range s.StarSystems {
+			ss.Traverse()
+		}
 	}
 }
+*/
 
+/*
 func DevShipOrbit() {
 	// ==== SHIP
 	e := S.NewEntity()
@@ -135,21 +168,23 @@ func DevShipOrbit() {
 	fgs := make([]ForceGen, 0)
 	S.ForceGens[e] = fgs
 
-	sol := S.StarsByName["Sol"]
+	sol := S.StarSystemsByName["Sol"].Star
 	solRF := S.EntFrames[sol.Entity]
 	S.EntFrames[e] = solRF
 
 	devheim := &Planet{
-		Entity:         S.NewEntity(),
-		Mass:           1.0,
-		Radius:         1.0 * earthRadius,
-		AxialTilt:      0.0, // TODO: earth's
-		RotationPeriod: 24 * 3600,
-		SurfaceGravity: 1.0 * g0,
-		Atmosphere: &Atmosphere{
-			Height:           100 * 1000,
-			ScaleHeight:      8.5 * 1000,
-			PressureSeaLevel: 1.0 * earthSeaLevelPressure,
+		Entity: S.NewEntity(),
+		Body: Body{
+			Mass:           1.0,
+			Radius:         1.0 * earthRadius,
+			AxialTilt:      0.0, // TODO: earth's
+			RotationPeriod: 24 * 3600,
+			SurfaceGravity: 1.0 * g0,
+			Atmosphere: &Atmosphere{
+				Height:           100 * 1000,
+				ScaleHeight:      8.5 * 1000,
+				PressureSeaLevel: 1.0 * earthSeaLevelPressure,
+			},
 		},
 	}
 
@@ -165,6 +200,7 @@ func DevShipOrbit() {
 	S.Orb[e] = devheim.DefaultOrbit()
 	S.AddForceGen(e, &ThrustForceGen{m0 * g0 * 0.0001, 2})
 }
+*/
 
 /*
 func ShipAndStation() {
@@ -222,29 +258,6 @@ func ShipAndStation() {
 	}
 
 	go GE.Loop()
-}
-*/
-/*
-func DevWorld() {
-	fmt.Printf("Average: %v\n", MassHist.AvgMass)
-
-	solSectorPos := &V3{0.0, 0.0, (4 * aupc) / gridUnit}
-	solSector := GetSector(solSectorPos)
-
-	solSector.Debug()
-
-	solSector.Traverse()
-	solSector.Debug()
-
-	solSector.Traverse()
-	solSector.Debug()
-
-	solSector.Traverse()
-	solSector.Debug()
-
-	solSector.Traverse()
-	solSector.Debug()
-
 }
 */
 
@@ -336,4 +349,25 @@ func DevWorldBase() {
 
 	S.EntFrames[sol.Entity] = solRF
 }
+*/
+
+/*
+	// TODO: read NewEntitySub and heimdall code, simplify
+	// TODO: create API call for all relevant entity state + sub of future deltas
+	// TODO: move to api.go (world.go should only setup world states)
+	go func() {
+		time.Sleep(2 * time.Second)
+		dataChan, _ := NewEntitySub(2)
+		for {
+			select {
+			case d, ok := <-dataChan:
+				if ok {
+					log.Debug("EntitySub", "len(dataChan)", len(dataChan), "d", string(d))
+				} else {
+					log.Debug("EntitySub dataChan closed")
+					return
+				}
+			}
+		}
+	}()
 */

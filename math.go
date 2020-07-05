@@ -273,3 +273,51 @@ func NormalizeAngle(a float64) float64 {
 	}
 	return a
 }
+
+// https://en.wikipedia.org/wiki/Histogram
+type Histogram struct {
+	endpoints []float64
+	counts    []uint64
+	total     uint64
+}
+
+func NewHistogram(endpoints []float64, counts []uint64) *Histogram {
+	l := len(endpoints)
+	if l != len(counts) || l == 0 {
+		panic("endpoints and counts must be of equal and positive length")
+	}
+
+	e := make([]float64, l)
+	c := make([]uint64, l)
+	copy(e, endpoints)
+	copy(c, counts)
+
+	var t uint64
+	for _, x := range counts {
+		t += x
+	}
+
+	return &Histogram{endpoints: e, counts: c, total: t}
+}
+
+// TODO: correct name for this function?
+// Sample returns a random value between two endpoints that are
+// randomly selected according to the Histogram's probability distribution.
+// See: https://en.wikipedia.org/wiki/Pseudo-random_number_sampling
+func (h *Histogram) Sample() float64 {
+	var acc uint64
+	x := uint64(Rand.Int63n(int64(h.total)))
+	i := 0
+	for {
+		acc += h.counts[i]
+		if x < acc {
+			if i == 0 {
+				return h.endpoints[i] * Rand.Float64()
+			} else {
+				width := h.endpoints[i] - h.endpoints[i-1]
+				return h.endpoints[i-1] + width*Rand.Float64()
+			}
+		}
+		i++
+	}
+}

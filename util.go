@@ -21,3 +21,98 @@ func removeEnt(ents []Id, i int) []Id {
 	ents[i] = ents[len(ents)-1]
 	return ents[:len(ents)-1]
 }
+
+//
+// TODO: move/sort these
+//
+var (
+	list1 = []string{
+		"star",
+		"planet",
+		"moon",
+		"ice",
+		"rock",
+		"ring",
+		"steel",
+		"free",
+		"easy",
+		"range",
+		"way",
+		"halo",
+		"light",
+		"dark",
+		"night",
+		"fall",
+		"dawn",
+		"dusk",
+		"day",
+		"first",
+		"head",
+		"arch",
+		"fore",
+		"dare",
+		"war",
+		"clash",
+		"tri",
+		"blast",
+		"up",
+		"down",
+		"next",
+		"wild",
+		"dust",
+	}
+	list2 = []string{
+		"finder",
+		"bender",
+		"seeker",
+		"catcher",
+		"rover",
+		"drifter",
+		"booter",
+		"nomad",
+		"grim",
+		"grimer",
+		"farer",
+		"roamer",
+		"cutter",
+		"ray",
+		"valier",
+		"guard",
+		"guarder",
+		"ment",
+		"able",
+		"fall",
+		"diver",
+		"buckler",
+		"basher",
+		"taker",
+		"ing",
+		"ling",
+		"ler",
+		"blaze",
+		"blink",
+		"link",
+		"beam",
+		"flare",
+		"burn",
+		"warper",
+		"siren",
+		"edge",
+		"mark",
+		"draw",
+		//"",
+	}
+)
+
+func nameGen() []string {
+	count := 36
+	names := []string{}
+
+	for i := 0; i < count; i++ {
+		prefix := list1[Rand.Intn(len(list1))]
+		suffix := list2[Rand.Intn(len(list2))]
+		names = append(names, prefix+""+suffix)
+	}
+
+	return names
+}

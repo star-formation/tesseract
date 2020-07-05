@@ -28,6 +28,11 @@ import (
 	"strconv"
 )
 
+var (
+	StarMassHist *Histogram
+	StarMassAvg  float64
+)
+
 // Star is a unique star.
 type Star struct {
 	Entity Id
@@ -38,10 +43,10 @@ type Star struct {
 	SurfaceTemp  float64
 }
 
-// NewStar returns a procedurally generated star.  Many of the stars attributes
-// are derived from the mass.
+// NewStar returns a procedurally generated star.
 func NewStar(mass float64) *Star {
 	star := &Star{}
+	star.Entity = S.NewEntity()
 	star.Body.Name = starName()
 	star.Body.Mass = mass
 	star.Body.Radius = starRadius(mass) * solarRadius
@@ -68,7 +73,8 @@ func (s *Star) DefaultOrbit() *OE {
 	return &OE{h: h, μ: μ, e: e, i: i, Ω: Ω, ω: ω, θ: θ}
 }
 
-// https://www.planetarybiology.com/calculating_habitable_zone.html
+// HabitableZone returns the inner and outer boundaries of the star's habitable zone in AU.
+// See: https://www.planetarybiology.com/calculating_habitable_zone.html
 // TODO: update to latest research
 func (s *Star) HabitableZone() (float64, float64) {
 	lum := starLum(s.Body.Mass)
@@ -127,26 +133,13 @@ func starSurfaceTemp(lum, r float64) float64 {
 	return math.Pow((lum / (4 * math.Pi * stefanBoltzmann * (r * r))), 0.25)
 }
 
-//
 // Mass Histogram / Initial Stellar Mass Function (IMF)
 //
 // [1] https://en.wikipedia.org/wiki/Initial_mass_function
 // [2] https://github.com/Azeret/galIMF
 //
-type MassRange struct {
-	Start     float64
-	Range     float64
-	StarCount int
-}
-
-type MassHistogram struct {
-	Ranges     []MassRange
-	AvgMass    float64
-	TotalStars int
-}
-
 // Data generated with [2]
-func getMassHistogram() *MassHistogram {
+func getStarStats() (*Histogram, float64) {
 	var err error
 	fileContent, err := ioutil.ReadFile(massHistogramFile)
 	if err != nil {
@@ -159,8 +152,8 @@ func getMassHistogram() *MassHistogram {
 	csvReader.Comment = '#'
 	csvReader.FieldsPerRecord = 5
 
-	ranges := make([]MassRange, 0)
-	mh := &MassHistogram{ranges, 0.0, 0}
+	endpoints := make([]float64, 0)
+	counts := make([]uint64, 0)
 	for {
 		r, err := csvReader.Read()
 		if err == io.EOF {
@@ -170,37 +163,24 @@ func getMassHistogram() *MassHistogram {
 			panic(err)
 		}
 
-		mRange, err := strconv.ParseFloat(r[1], 64)
 		start, err := strconv.ParseFloat(r[3], 64)
 		count, err := strconv.ParseUint(r[4], 10, 64)
 		if err != nil {
 			panic(err)
 		}
 
-		mr := MassRange{start, mRange, int(count)}
-		mh.Ranges = append(mh.Ranges, mr)
-		mh.TotalStars += int(count)
+		endpoints = append(endpoints, start)
+		counts = append(counts, count)
 	}
 
-	var m float64
-	for _, r := range mh.Ranges {
-		tm := float64(r.StarCount) * (r.Start + r.Range/2.0)
-		m += tm
+	t := counts[0]
+	m := float64(counts[0]) * (endpoints[0] / 2.0)
+	for i := 1; i < len(endpoints); i++ {
+		width := endpoints[i] - endpoints[i-1]
+		m += float64(counts[i]) * (endpoints[i] + width/2.0)
+		t += counts[i]
 	}
-	mh.AvgMass = m / float64(mh.TotalStars)
+	avgMass := m / float64(t)
 
-	return mh
-}
-
-func (mh *MassHistogram) randMass() float64 {
-	x := Rand.Intn(mh.TotalStars)
-	i, count := 0, 0
-	for {
-		count += mh.Ranges[i].StarCount
-		if x <= count {
-
-			return mh.Ranges[i].Start + mh.Ranges[i].Range*Rand.Float64()
-		}
-		i++
-	}
+	return NewHistogram(endpoints, counts), avgMass
 }

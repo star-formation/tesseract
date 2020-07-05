@@ -53,7 +53,7 @@ func main() {
 	app.Action = func(c *cli.Context) error {
 		log.Info("==== starburst")
 		// TODO: pass rand seed
-		tesseract.DevWorld(c.Uint64("testseed"))
+		tesseract.DevWorld2(c.Uint64("testseed"))
 		return nil
 	}
 

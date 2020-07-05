@@ -15,33 +15,25 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+
 package tesseract
 
-import (
-	"fmt"
-	"os"
+type Body struct {
+	Name string
 
-	"github.com/ethereum/go-ethereum/log"
-)
+	Mass   float64
+	Radius float64
 
-//
-// References:
-//
-// [1] Millington, Ian. Game physics engine development (Second Edition). CRC Press, 2010.
-// [2] https://github.com/idmillington/cyclone-physics/blob/master/include/cyclone/core.h
-//
+	Orbit *OE
 
-func init() {
-	log.Root().SetHandler(log.MultiHandler(
-		log.StreamHandler(os.Stderr, log.TerminalFormat(true)),
-		log.LvlFilterHandler(
-			log.LvlDebug,
-			log.Must.FileHandler("tesseract_errors.json", log.JSONFormat()))))
+	AxialTilt float64
 
-	StarMassHist, StarMassAvg = getStarStats()
-	PlanetMassHist, PlanetRadiusHist = getExoplanetHistograms()
+	Rotation       *V3
+	RotationPeriod float64
 
-	fmt.Printf("StarMassAvg: %.4f \n", StarMassAvg)
+	Atmosphere *Atmosphere
 
-	//InitWorld()
+	MagField float64
+
+	SurfaceGravity float64
 }

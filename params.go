@@ -59,12 +59,17 @@ const (
 	solarLum    = 3.828e26   // W
 	solarRadius = 6.957e8    // m
 
+	sunMu = 1.32712440018e20
+
 	// https://en.wikipedia.org/wiki/Earth_mass
 	earthMass             = 5.9722e24 // kg
 	earthRadius           = 6.3781e6  // km
 	earthMu               = 3.986004418e14
 	earthSeaLevelPressure = 101325 // pascals
 	g0                    = 9.80665
+
+	// https://en.wikipedia.org/wiki/Jupiter_mass
+	jupiterMass = 1.89813e27
 
 	//
 	// Physics Engine
@@ -81,10 +86,11 @@ const (
 	//
 	// Game Design
 	//
-	gridUnit              = 100.0 // AU
-	sectorSize            = aupc
-	minStellarProximity   = (1.5 * auly) / gridUnit
-	sectorTraversalFactor = 0.25
+	gridUnit                  = 100.0 // AU
+	sectorSize                = aupc
+	minStellarProximity       = (1.5 * auly) / gridUnit
+	sectorTraversalFactor     = 0.25
+	starSystemTraversalFactor = 0.25
 
 	maxPlanets = 14
 	maxMoons   = 6

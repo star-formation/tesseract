@@ -44,8 +44,8 @@ type Sector struct {
 	// explored by players == procedurally generated
 	Mapped float64
 
-	// Star positions are in gridUnit
-	Stars []*Star
+	// Star system positions are in gridUnit
+	StarSystems []*StarSystem
 }
 
 // Traverse enacts partial procedural generation of a sector.
@@ -60,10 +60,10 @@ func (s *Sector) Traverse() {
 		s.getAdjacents() // ensures adjacent sectors are initialized
 	}
 
-	prob := (s.stellarDensity() / MassHist.AvgMass) * sectorTraversalFactor
+	prob := (s.stellarDensity() / StarMassAvg) * sectorTraversalFactor
 	if Rand.Float64() < prob {
-		star := NewStar(MassHist.randMass())
-		s.addStar(star)
+		ss := NewStarSystem(StarMassHist.Sample())
+		s.addStarSystem(ss)
 	}
 
 	s.Mapped += sectorTraversalFactor
@@ -72,20 +72,30 @@ func (s *Sector) Traverse() {
 	}
 }
 
-func (s *Sector) addStarFixed(newStar *Star, pos *V3) {
-	newStarRF := &RefFrame{
+func (s *Sector) addStarSystemFixed(newStarSystem *StarSystem, pos *V3) {
+	rf := &RefFrame{
 		Parent:      rootRF,
 		Pos:         pos,
 		Orbit:       nil,
 		Orientation: nil, // TODO
 	}
-	S.EntFrames[newStar.Entity] = newStarRF
+	S.EntFrames[newStarSystem.Entity] = rf
 
-	s.Stars = append(s.Stars, newStar)
-	S.AddStar(newStar, pos)
+	for _, p := range newStarSystem.Planets {
+		prf := &RefFrame{
+			Parent:      rf,
+			Pos:         nil,
+			Orbit:       p.Body.Orbit,
+			Orientation: nil, // TODO
+		}
+		S.EntFrames[p.Entity] = prf
+	}
+
+	s.StarSystems = append(s.StarSystems, newStarSystem)
+	S.AddStarSystem(newStarSystem, pos)
 }
 
-func (s *Sector) addStar(newStar *Star) {
+func (s *Sector) addStarSystem(newStarSystem *StarSystem) {
 	p := &V3{}
 	randDist := func() float64 {
 		return (sectorSize/gridUnit)*Rand.Float64() - 1.0
@@ -104,8 +114,8 @@ NewPos:
 	for _, sec := range sectors {
 		//fmt.Printf("%s\n", sec.Debug())
 		//sec.Debug()
-		for _, st := range sec.Stars {
-			pos := S.Pos[st.Entity]
+		for _, ss := range sec.StarSystems {
+			pos := S.Pos[ss.Entity]
 			diff := x.Sub(pos, p).Magnitude()
 			//fmt.Printf("diff: %.2f\n", diff)
 			if diff < minStellarProximity {
@@ -114,7 +124,7 @@ NewPos:
 			}
 		}
 	}
-	s.addStarFixed(newStar, p)
+	s.addStarSystemFixed(newStarSystem, p)
 }
 
 // getAdjacents returns the 26 cube sectors adjacent to s
@@ -164,9 +174,9 @@ func (s *Sector) getAdjacents() []*Sector {
 	adjacents := make([]*Sector, 26)
 	a, b := new(V3), new(V3)
 	for i := 0; i < 26; i++ {
-		b.X = float64(permutations[i].X) * (sectorSize / gridUnit)
-		b.Y = float64(permutations[i].Y) * (sectorSize / gridUnit)
-		b.Z = float64(permutations[i].Z) * (sectorSize / gridUnit)
+		b.X = auToGrid(float64(permutations[i].X))
+		b.Y = auToGrid(float64(permutations[i].Y))
+		b.Z = auToGrid(float64(permutations[i].Z))
 		a.Add(s.Corner, b)
 		adjacents[i] = GetSector(a)
 	}
@@ -182,7 +192,7 @@ func GetSector(pos *V3) *Sector {
 	} else {
 		newP := &V3{}
 		newP.X, newP.Y, newP.Z = pos.X, pos.Y, pos.Z
-		newS := &Sector{newP, 0.0, make([]*Star, 0)}
+		newS := &Sector{newP, 0.0, make([]*StarSystem, 0)}
 		S.Sectors[key] = newS
 		return newS
 	}
@@ -193,6 +203,7 @@ func (s *Sector) Key() string {
 }
 
 func sectorKey(pos *V3, floor bool) string {
+	//log.Debug("FUNKY", "pos", pos)
 	format := func(f float64) string {
 		u := f / (sectorSize / gridUnit)
 		if floor {
@@ -255,7 +266,7 @@ func NewGalaxy() {
 // Debug
 //
 func (s *Sector) Debug() {
-	fmt.Printf("%s: mapped: %.2f star count: %d\n", s.Key(), s.Mapped, len(s.Stars))
+	fmt.Printf("%s: mapped: %.2f star count: %d\n", s.Key(), s.Mapped, len(s.StarSystems))
 }
 
 func DebugSectors(onlyMapped bool) {
@@ -271,10 +282,28 @@ func DebugSectors(onlyMapped bool) {
 
 	for _, k := range keys {
 		s := S.Sectors[k]
-		fmt.Printf("%s ==== SECTOR: %.2f mapped, %d stars:\n", k, s.Mapped, len(s.Stars))
-		for _, st := range s.Stars {
-			fmt.Printf("%s %s Class: %s\n", sectorKey(S.Pos[st.Entity], false), string(st.SpectralType), st.Body.Name)
+		fmt.Printf("%s SECTOR: %.2f mapped\n", k, s.Mapped)
+		for _, ss := range s.StarSystems {
+			fmt.Printf("%s Star System: %.2f mapped\n",
+				sectorKey(S.Pos[ss.Star.Entity], false),
+				ss.Mapped,
+			)
+			fmt.Printf("  %s: %s Class (%.2f M☉) %.2f mapped\n",
+				ss.Star.Body.Name,
+				string(ss.Star.SpectralType),
+				ss.Star.Body.Mass,
+				ss.Mapped,
+			)
+			for i, p := range ss.Planets {
+				fmt.Printf("    Planet %d: %s (%.2f M⊕)\n", i+1, p.Body.Name, p.Body.Mass)
+			}
+
 		}
+		fmt.Printf("\n")
 	}
 
+}
+
+func auToGrid(au float64) float64 {
+	return (au * sectorSize) / gridUnit
 }

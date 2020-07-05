@@ -58,8 +58,8 @@ type State struct {
 	// Hyperspace component holds data used by the Hyperdrive System
 	Hyperspace map[Id]*Hyperspace
 
-	StarsById   map[Id]*Star
-	StarsByName map[string]*Star
+	StarSystemsById   map[Id]*StarSystem
+	StarSystemsByName map[string]*StarSystem
 
 	Sectors map[string]*Sector
 
@@ -107,8 +107,8 @@ func ResetState() {
 	s.IdleSince = make(map[Id]float64, 0)
 
 	s.Hyperspace = make(map[Id]*Hyperspace, 0)
-	s.StarsById = make(map[Id]*Star, 0)
-	s.StarsByName = make(map[string]*Star, 0)
+	s.StarSystemsById = make(map[Id]*StarSystem, 0)
+	s.StarSystemsByName = make(map[string]*StarSystem, 0)
 	s.Sectors = make(map[string]*Sector, 0)
 	s.Mass = make(map[Id]*float64, 0)
 	s.Pos = make(map[Id]*V3, 0)
@@ -151,12 +151,12 @@ func (s *State) ensureEntAlloc(rf *RefFrame) {
 	}
 }
 
-func (s *State) AddStar(star *Star, pos *V3) {
-	s.Pos[star.Entity] = pos
-	s.StarsById[star.Entity] = star
-	s.StarsByName[star.Body.Name] = star
-
-	s.SetIdle(star.Entity, S.EntFrames[star.Entity], 0)
+func (s *State) AddStarSystem(ss *StarSystem, pos *V3) {
+	s.Pos[ss.Entity] = pos
+	s.Pos[ss.Star.Entity] = pos
+	s.StarSystemsById[ss.Entity] = ss
+	s.StarSystemsByName[ss.Name] = ss
+	s.SetIdle(ss.Entity, S.EntFrames[ss.Entity], 0)
 }
 
 func (s *State) AddForceGen(e Id, fg ForceGen) {

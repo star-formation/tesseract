@@ -92,18 +92,13 @@ type ShipClass interface {
 	// Each Hard Point can attach one external module such as a weapon module.
 	HardPoints() uint8
 
-	// High Power Slot integer count.
-	// Each internal high power slot can fit one high-powered module.
-	HighPowerSlots() uint8
-
-	// Low Power Slot integer count.
-	// Each internal low power slot can fit one low-powered module.
-	LowPowerSlots() uint8
+	// Internal Module Slot integer count.
+	// Modules take up one or more slots.
+	ModuleSlots() uint8
 
 	// Each ship class also has dedicated module slots for certain types of
 	// modules.  For now these are hard-coded in the gameplay/ship
-	// system of the game engine and consists of one slot for the ship's
-	// main engine, one for a reactor and one for a mainframe.
+	// system of the game engine and includes the ship engine(s).
 
 	// TODO: ship bonuses
 }
@@ -134,9 +129,8 @@ const (
 	aeroLiftBaseWarmjet = 0.2 // dimensionless coefficient
 	aeroDragBaseWarmjet = 0.2
 
-	hardPointsWarmjet     = 2 // integer count
-	highPowerSlotsWarmjet = 1
-	lowPowerSlotsWarmjet  = 1
+	hardPointsWarmjet  = 4 // integer count
+	moduleSlotsWarmjet = 4
 
 	// TODO: shape / size
 )
@@ -153,5 +147,10 @@ func (s *WarmJet) CargoBayCap() float64  { return cargoBayCapWarmjet }
 func (s *WarmJet) AeroLiftBase() float64 { return aeroLiftBaseWarmjet }
 func (s *WarmJet) AeroDragBase() float64 { return aeroDragBaseWarmjet }
 func (s *WarmJet) HardPoints() uint8     { return hardPointsWarmjet }
-func (s *WarmJet) HighPowerSlots() uint8 { return highPowerSlotsWarmjet }
-func (s *WarmJet) LowPowerSlots() uint8  { return lowPowerSlotsWarmjet }
+func (s *WarmJet) ModuleSlots() uint8    { return moduleSlotsWarmjet }
+
+//
+// Ship Engines
+//
+type ShipEngine interface {
+}

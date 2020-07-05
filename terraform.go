@@ -27,39 +27,8 @@ import (
 )
 
 var (
-	Rand     *xrand.Rand
-	MassHist *MassHistogram
+	Rand *xrand.Rand
 )
-
-//
-// PLANETS
-//
-type PlanetBase uint8
-
-const (
-	Terra = iota
-	Gas
-)
-
-type Body struct {
-	Name string
-
-	Mass   float64
-	Radius float64
-
-	Orbit    *OE
-	Rotation *V3
-
-	Atmosphere *Atmosphere
-
-	MagField float64
-}
-
-//
-// MOONS
-//
-type Moon struct {
-}
 
 // Orbital elements generation is simplified by ensuring
 // that the following always holds:
@@ -74,68 +43,6 @@ func rollOrbits(n uint) []*OE {
 	// never overlap at their apastron.
 
 	return []*OE{}
-}
-
-//
-// Planets
-//
-func rollPlanetCount() uint {
-	return 1
-}
-
-func rollPlanets() []*Planet {
-	c := rollPlanetCount()
-	//orbits := rollOrbits(c)
-	planets := make([]*Planet, c)
-	for i := 0; i < int(c); i++ {
-		planets = append(planets, rollPlanet())
-	}
-	return planets
-}
-
-func rollPlanet() *Planet {
-	return &Planet{}
-}
-
-func rollTerraOrGas(mass, float64, orbit *OE, star Star) PlanetBase {
-	return Terra
-}
-
-func rollPlanetMass(orbit *OE) float64 {
-	return 0
-}
-
-func genPlanetName(p *Planet) string {
-	if true {
-		return rollNameEpic(p)
-	} else {
-		return ""
-	}
-}
-
-func rollNameEpic(p *Planet) string {
-	return ""
-}
-
-//
-// Moons
-//
-func rollMoonCount(p *Planet) uint {
-	return 1
-}
-
-func rollMoons(p *Planet) []*Moon {
-	c := rollMoonCount(p)
-	//orbits := rollOrbits(c)
-	moons := make([]*Moon, c)
-	for i := 0; i < int(c); i++ {
-		moons = append(moons, rollMoon())
-	}
-	return moons
-}
-
-func rollMoon() *Moon {
-	return &Moon{}
 }
 
 //

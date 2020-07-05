@@ -74,6 +74,9 @@ func (ge *GameEngine) Loop() error {
 			last = t0
 		}
 
+		// TODO: first, setup entity subs
+
+		// then:
 		err = ge.handleUserActions()
 		if err != nil {
 			break

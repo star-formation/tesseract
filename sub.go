@@ -18,30 +18,38 @@
 package tesseract
 
 import (
-	"fmt"
-	"os"
-
-	"github.com/ethereum/go-ethereum/log"
+	"encoding/json"
 )
 
-//
-// References:
-//
-// [1] Millington, Ian. Game physics engine development (Second Edition). CRC Press, 2010.
-// [2] https://github.com/idmillington/cyclone-physics/blob/master/include/cyclone/core.h
-//
+type EntitySub struct {
+	entity        Id
+	dataChan      chan []byte
+	keepAliveChan chan bool
+}
 
-func init() {
-	log.Root().SetHandler(log.MultiHandler(
-		log.StreamHandler(os.Stderr, log.TerminalFormat(true)),
-		log.LvlFilterHandler(
-			log.LvlDebug,
-			log.Must.FileHandler("tesseract_errors.json", log.JSONFormat()))))
+type EntitySubData struct {
+	OE *OE
 
-	StarMassHist, StarMassAvg = getStarStats()
-	PlanetMassHist, PlanetRadiusHist = getExoplanetHistograms()
+	Pos *V3
+	Vel *V3
 
-	fmt.Printf("StarMassAvg: %.4f \n", StarMassAvg)
+	Ori *Q
+	Rot *V3
+}
 
-	//InitWorld()
+func (es *EntitySub) Update() {
+	e := es.entity
+	data := EntitySubData{
+		OE:  S.Orb[e],
+		Pos: S.Pos[e],
+		Vel: S.Vel[e],
+		Ori: S.Ori[e],
+		Rot: S.Rot[e].R, // TODO: include body/world transform?
+	}
+
+	b, err := json.Marshal(data)
+	if err != nil {
+		panic(err)
+	}
+	es.dataChan <- b
 }

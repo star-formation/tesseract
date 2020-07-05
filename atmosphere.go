@@ -39,3 +39,5 @@ func (a *Atmosphere) PressureAtAltitude(alt float64) float64 {
 
 	return a.PressureSeaLevel * math.Exp(-(alt / a.ScaleHeight))
 }
+
+// TODO: gas planet atmosphere handling!
