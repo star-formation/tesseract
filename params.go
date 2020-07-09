@@ -80,8 +80,7 @@ const (
 	//
 	// Game Engine
 	//
-	loopTarget        = 1000 * time.Millisecond
-	maxActionsPerLoop = 10
+	loopTarget = 1000 * time.Millisecond
 
 	//
 	// Game Design

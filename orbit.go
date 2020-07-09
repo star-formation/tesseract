@@ -52,6 +52,10 @@ type OE struct {
 	h, i, Ω, e, ω, θ, μ float64
 }
 
+func (o *OE) Clone() interface{} {
+	return &OE{o.h, o.i, o.Ω, o.e, o.ω, o.θ, o.μ}
+}
+
 func (o *OE) Debug() {
 	fmt.Printf("h: %f i: %f Ω: %f e: %f ω: %f θ: %f μ: %f\n",
 		o.h, RadToDeg(o.i), RadToDeg(o.Ω), o.e, RadToDeg(o.ω), RadToDeg(o.θ), o.μ)

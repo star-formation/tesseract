@@ -52,9 +52,6 @@ type State struct {
 
 	IdleSince map[Id]float64
 
-	EntitySubs          map[*EntitySub]struct{}
-	EntitySubsCloseChan chan *EntitySub
-
 	// Hyperspace component holds data used by the Hyperdrive System
 	Hyperspace map[Id]*Hyperspace
 
@@ -96,9 +93,6 @@ func ResetState() {
 	s.MsgBus = &MessageBus{channels}
 	channels2 := make([]chan<- []byte, 0)
 	s.ActionBus = &MessageBus{channels2}
-
-	s.EntitySubs = make(map[*EntitySub]struct{}, 0)
-	s.EntitySubsCloseChan = make(chan *EntitySub, 100)
 
 	s.EntFrames = make(map[Id]*RefFrame, 0)
 

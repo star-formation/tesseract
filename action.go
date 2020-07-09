@@ -27,9 +27,6 @@ import (
 // authenticated post user account signature verification.
 // Actions can also originate from the game engine itself;
 // such actions are always considered authenticated.
-type Action interface {
-	Execute() error
-}
 
 type ActionRotate struct {
 	entity   Id
@@ -37,7 +34,7 @@ type ActionRotate struct {
 	duration float64
 }
 
-func (a *ActionRotate) Execute() error {
+func (a *ActionRotate) Execute() interface{} {
 	max := S.ShipClass[a.entity].CMGTorqueCap()
 	if a.t.X > max.X || a.t.Y > max.Y || a.t.Z > max.Z {
 		return fmt.Errorf("torque %v %v %v larger than CMG cap %v %v %v", a.t.X, a.t.Y, a.t.Z, max.X, max.Y, max.Z)
@@ -53,7 +50,7 @@ type ActionEngineThrust struct {
 	duration float64
 }
 
-func (a *ActionEngineThrust) Execute() error {
+func (a *ActionEngineThrust) Execute() interface{} {
 	S.AddForceGen(a.entity, &ThrustForceGen{a.thrust, a.duration})
 	return nil
 }

@@ -142,12 +142,14 @@ func getExoplanetHistograms() (*Histogram, *Histogram) {
 	sort.Float64s(masses)
 	sort.Float64s(radii)
 
-	for j := 0; j < 24; j++ {
-		fmt.Printf("m: %.8f \n", masses[len(masses)-j-1])
-	}
-	for j := 0; j < 24; j++ {
-		fmt.Printf("m: %.8f \n", masses[j])
-	}
+	/*
+		for j := 0; j < 24; j++ {
+			fmt.Printf("m: %.8f \n", masses[len(masses)-j-1])
+		}
+		for j := 0; j < 24; j++ {
+			fmt.Printf("m: %.8f \n", masses[j])
+		}
+	*/
 
 	massCounts := make([]uint64, len(masses))
 	radiusCounts := make([]uint64, len(radii))

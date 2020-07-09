@@ -31,6 +31,10 @@ type V3 struct {
 	X, Y, Z float64
 }
 
+func (v *V3) Clone() interface{} {
+	return &V3{v.X, v.Y, v.Z}
+}
+
 func (v *V3) Fmt() string {
 	return fmt.Sprintf("x: %.6g y: %.6g z: %.6g", v.X, v.Y, v.Z)
 }
@@ -116,6 +120,10 @@ func (v *V3) IsZero() bool {
 // 3x3 Matrix
 type M3 [9]float64
 
+func (m *M3) Clone() interface{} {
+	return &M3{m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8]}
+}
+
 func (m *M3) Transform(v *V3) *V3 {
 	return &V3{
 		v.X*m[0] + v.Y*m[1] + v.Z*m[2],
@@ -197,6 +205,10 @@ func (m *M3) Inverse() {
 // 3x4 Matrix
 type M4 [12]float64
 
+func (m *M4) Clone() interface{} {
+	return &M4{m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], m[10], m[11]}
+}
+
 func (m *M4) Transform(v *V3) *V3 {
 	return &V3{
 		v.X*m[0] + v.Y*m[1] + v.Z*m[2] + m[3],
@@ -208,6 +220,10 @@ func (m *M4) Transform(v *V3) *V3 {
 // Quaternion
 type Q struct {
 	R, I, J, K float64
+}
+
+func (q *Q) Clone() interface{} {
+	return &Q{q.R, q.I, q.J, q.K}
 }
 
 func (q *Q) Normalise() {

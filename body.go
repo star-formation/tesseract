@@ -37,3 +37,20 @@ type Body struct {
 
 	SurfaceGravity float64
 }
+
+func (b *Body) Clone() interface{} {
+	name := make([]byte, len(b.Name))
+	copy(name, b.Name)
+	return &Body{
+		string(name),
+		b.Mass,
+		b.Radius,
+		b.Orbit.Clone().(*OE),
+		b.AxialTilt,
+		b.Rotation.Clone().(*V3),
+		b.RotationPeriod,
+		b.Atmosphere.Clone().(*Atmosphere),
+		b.MagField,
+		b.SurfaceGravity,
+	}
+}

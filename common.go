@@ -17,31 +17,12 @@
 */
 package tesseract
 
-import (
-	"math"
-)
-
-type Atmosphere struct {
-	Height, ScaleHeight float64
-	PressureSeaLevel    float64
+// Cloner is the interface that wraps the Clone method.
+//
+// Clone returns a deep copy of the object.
+// Clone must guarantee that the returned object has no references
+// to the original object nor any objects referenced directly or indirectly
+// by the original object.
+type Cloner interface {
+	Clone() interface{}
 }
-
-func (a *Atmosphere) Clone() interface{} {
-	return &Atmosphere{a.Height, a.ScaleHeight, a.PressureSeaLevel}
-}
-
-// https://en.wikipedia.org/wiki/Scale_height
-func (a *Atmosphere) PressureAtAltitude(alt float64) float64 {
-	// TODO: handle increase pressure below sea level
-	if alt < 0 {
-		return a.PressureSeaLevel
-	}
-
-	if alt > a.Height {
-		return 0
-	}
-
-	return a.PressureSeaLevel * math.Exp(-(alt / a.ScaleHeight))
-}
-
-// TODO: gas planet atmosphere handling!

@@ -75,22 +75,7 @@ func DevWorld2(testSeed uint64) {
 	// TODO: for now, manually link ref frames here;
 	//       refactor after testing in client
 
-	startEngine()
-}
-
-func startEngine() {
-	systems := []System{
-		&Physics{},
-		//&Hyperdrive{},
-	}
-	actionChan := make(chan Action, 10)
-	subChan := make(chan *EntitySub, 10)
-	GE = &GameEngine{
-		systems:    systems,
-		actionChan: actionChan,
-		subChan:    subChan,
-	}
-
+	GE = NewEngine()
 	GE.Loop()
 }
 

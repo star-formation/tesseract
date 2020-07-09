@@ -42,13 +42,43 @@ import (
 
 */
 
+var GE *GameEngine
+
 type GameEngine struct {
-	systems    []System
-	actionChan chan Action
-	subChan    chan *EntitySub
+	systems []System
+
+	actionChan   chan APIExec
+	getStateChan chan APIExec
+	subStateChan chan APIExec
 }
 
-var GE *GameEngine
+func NewEngine() *GameEngine {
+	e := GameEngine{
+		systems:      []System{&Physics{}},
+		actionChan:   make(chan APIExec, 10),
+		getStateChan: make(chan APIExec, 10),
+		subStateChan: make(chan APIExec, 10),
+	}
+	return &e
+}
+
+func NewEntity() *GameEngine {
+	systems := []System{
+		&Physics{},
+		//&Hyperdrive{},
+	}
+	c0 := make(chan APIExec, 10)
+	c1 := make(chan APIExec, 10)
+	c2 := make(chan APIExec, 10)
+	engine := &GameEngine{
+		systems:      systems,
+		actionChan:   c0,
+		getStateChan: c1,
+		subStateChan: c2,
+	}
+
+	return engine
+}
 
 func (ge *GameEngine) Loop() error {
 	var err error
@@ -60,6 +90,7 @@ func (ge *GameEngine) Loop() error {
 
 	debug := 0
 	for err == nil {
+		// Time Handling
 		debug++
 		t0 = time.Now()
 		worldTime := t0.Sub(start)
@@ -74,36 +105,22 @@ func (ge *GameEngine) Loop() error {
 			last = t0
 		}
 
-		// TODO: first, setup entity subs
-
-		// then:
-		err = ge.handleUserActions()
-		if err != nil {
-			break
-		}
+		// First, handle read-only API calls
+		ge.handleAPIExecs(ge.getStateChan)
+		// Then, handle read-only API subs (state deltas)
+		ge.handleAPIExecs(ge.subStateChan)
+		// Then, enact user actions (does not directly modify state)
+		ge.handleAPIExecs(ge.actionChan)
 
 		// TODO: ge.handleTimerActions()
 
+		// Run Engine Systems to update state (in part from user actions)
 		log.Debug("engine.Loop", "c", debug, "run", time.Now().Sub(start))
 		err = ge.update(worldTime.Seconds(), elapsed.Seconds())
 		if err != nil {
 			break
 		}
 
-		for len(S.EntitySubsCloseChan) > 0 {
-			es := <-S.EntitySubsCloseChan
-			delete(S.EntitySubs, es)
-		}
-
-		// TODO: auth and throttling
-		for len(ge.subChan) > 0 {
-			es := <-ge.subChan
-			S.EntitySubs[es] = struct{}{}
-		}
-
-		for es, _ := range S.EntitySubs {
-			es.Update()
-		}
 	}
 
 	log.Info("engine.Loop", "err", err)
@@ -139,30 +156,16 @@ func (ge *GameEngine) update(worldTime, elapsed float64) error {
 	return nil
 }
 
-func (e *GameEngine) handleUserActions() error {
-	var actions []Action
-	select {
-	default:
-		return nil
-	case action := <-e.actionChan:
-		actions = make([]Action, 0)
-		actions = append(actions, action)
-		for i := 1; i < maxActionsPerLoop; i++ {
-			select {
-			default:
-				for _, a := range actions {
-					err := a.Execute()
-					if err != nil {
-						return err
-					}
-				}
-				return nil
-			case a := <-e.actionChan:
-				actions = append(actions, a)
+func (e *GameEngine) handleAPIExecs(c chan APIExec) {
+	for {
+		select {
+		case req := <-c:
+			resp := req.Ex.Execute()
+			if req.RespChan != nil {
+				req.RespChan <- resp
 			}
+		default:
+			return
 		}
 	}
-
-	//return errors.New("wtf")
-	return nil
 }
