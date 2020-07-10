@@ -40,6 +40,25 @@ func NewStarSystem(starMass float64) *StarSystem {
 	return ss
 }
 
+func (ss *StarSystem) Clone() interface{} {
+	name := make([]byte, len(ss.Name))
+	copy(name, ss.Name)
+
+	planets := []*Planet{}
+	for _, p := range ss.Planets {
+		c := p.Clone().(*Planet)
+		planets = append(planets, c)
+	}
+
+	return &StarSystem{
+		Entity:  ss.Entity,
+		Name:    string(name),
+		Star:    ss.Star.Clone().(*Star),
+		Planets: planets,
+		Mapped:  ss.Mapped,
+	}
+}
+
 // Traverse enacts partial procedural generation of a star system.
 // Traverse is generally called by the TODO system when a player is traversing
 // the star system (having spent X time and/or moved Y distance in it).

@@ -57,6 +57,16 @@ func NewStar(mass float64) *Star {
 	return star
 }
 
+func (s *Star) Clone() interface{} {
+	return &Star{
+		Entity:       s.Entity,
+		Body:         *s.Body.Clone().(*Body),
+		SpectralType: s.SpectralType,
+		Luminosity:   s.Luminosity,
+		SurfaceTemp:  s.SurfaceTemp,
+	}
+}
+
 func (s *Star) Debug() {
 	fmt.Printf("Class: %v Mass: %.3f Radius: %.0f km Temp: %.0f K Lum: %.3g W\n", strconv.QuoteRune(s.SpectralType), s.Body.Mass, s.Body.Radius/1000, s.SurfaceTemp, s.Luminosity)
 }

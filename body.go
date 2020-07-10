@@ -41,15 +41,31 @@ type Body struct {
 func (b *Body) Clone() interface{} {
 	name := make([]byte, len(b.Name))
 	copy(name, b.Name)
+
+	var atm *Atmosphere
+	if b.Atmosphere != nil {
+		atm = b.Atmosphere.Clone().(*Atmosphere)
+	}
+
+	var orb *OE
+	if b.Orbit != nil {
+		orb = b.Orbit.Clone().(*OE)
+	}
+
+	var rot *V3
+	if b.Rotation != nil {
+		rot = b.Rotation.Clone().(*V3)
+	}
+
 	return &Body{
 		string(name),
 		b.Mass,
 		b.Radius,
-		b.Orbit.Clone().(*OE),
+		orb,
 		b.AxialTilt,
-		b.Rotation.Clone().(*V3),
+		rot,
 		b.RotationPeriod,
-		b.Atmosphere.Clone().(*Atmosphere),
+		atm,
 		b.MagField,
 		b.SurfaceGravity,
 	}

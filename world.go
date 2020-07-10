@@ -18,6 +18,8 @@
 package tesseract
 
 import (
+	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -74,6 +76,17 @@ func DevWorld2(testSeed uint64) {
 	// TODO: ref frames and ship -> solar system links (for client API)
 	// TODO: for now, manually link ref frames here;
 	//       refactor after testing in client
+
+	//
+	go func() {
+		time.Sleep(time.Second * 1)
+		apiResp := APIGetGalaxy()
+		j, err := json.MarshalIndent(apiResp, "", "  ")
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("apiResp: %s\n", string(j))
+	}()
 
 	GE = NewEngine()
 	GE.Loop()

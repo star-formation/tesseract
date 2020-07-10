@@ -87,10 +87,10 @@ func APIActionThrust(e Id, t, d float64) {
 //
 // API State Getters
 //
-func APIGetGalaxy() []Sector {
+func APIGetGalaxy() map[string]*Sector {
 	r := AllSectors{}
 	x := call(GE.getStateChan, r)
-	return x.([]Sector)
+	return x.(map[string]*Sector)
 }
 
 // call makes a synchronous call to the game engine by sending a request
@@ -114,20 +114,10 @@ type AllSectors struct {
 }
 
 func (as AllSectors) Execute() interface{} {
-	// Copy all reference type to avoid any links to engine state
 	sectors := make(map[string]*Sector)
-	/*
-		for k, v := range S.Sectors {
-			// TODO: add .Clone() to all relevant state types
-			c := &V3{v.Corner.X, v.Corner.Y, v.Corner.Z}
-			sss := make([]*StarSystem, len(v.StarSystems))
-			for i, ss := range v.StarSystems {
-				sss
-			}
-			s := Sector{Corner: c, Mapped: v.Mapped, StarSystems: ss}
-			sectors[k] = s
-		}
-	*/
+	for k, s := range S.Sectors {
+		sectors[k] = s.Clone().(*Sector)
+	}
 	return sectors
 }
 

@@ -53,6 +53,13 @@ func NewPlanet() *Planet {
 	return p
 }
 
+func (p *Planet) Clone() interface{} {
+	return &Planet{
+		Entity: p.Entity,
+		Body:   *p.Body.Clone().(*Body),
+	}
+}
+
 func planetName() string {
 	// TODO: number in system and possibly unique/rare name
 	return ""

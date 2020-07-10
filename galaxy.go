@@ -48,6 +48,18 @@ type Sector struct {
 	StarSystems []*StarSystem
 }
 
+func (s *Sector) Clone() interface{} {
+	sss := []*StarSystem{}
+	for _, ss := range s.StarSystems {
+		sss = append(sss, ss.Clone().(*StarSystem))
+	}
+	return &Sector{
+		Corner:      s.Corner.Clone().(*V3),
+		Mapped:      s.Mapped,
+		StarSystems: sss,
+	}
+}
+
 // Traverse enacts partial procedural generation of a sector.
 // Traverse is generally called by the TODO system when a player is traversing
 // the sector (having spent X time and/or moved Y distance in the sector).
