@@ -21,9 +21,14 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 )
 
-// The Physics system simulates classical mechanics.
-// It is primarily based on [1] and [2].
 //
+// References:
+//
+// [1] Millington, Ian. Game physics engine development (Second Edition). CRC Press, 2010.
+// [2] https://github.com/idmillington/cyclone-physics/blob/master/include/cyclone/core.h
+//
+
+// The Physics system simulates classical mechanics.
 type Physics struct{}
 
 //
@@ -146,7 +151,7 @@ func updateClassicalMechanics(worldTime, elapsed float64, rf *RefFrame, e Id) {
 // TODO: check inertia tensor functions and cuboid tensor for Y axis
 
 // https://en.wikipedia.org/wiki/List_of_moments_of_inertia
-// mass, width, height, depth
+//                       mass, width, height, depth
 func InertiaTensorCuboid(m, w, h, d float64) *M3 {
 	h2 := h * h
 	w2 := w * w

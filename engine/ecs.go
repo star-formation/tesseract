@@ -67,3 +67,8 @@ type System interface {
 	//          that has active force generators and false otherwise.
 	IsHotPostUpdate(Id) bool
 }
+
+func removeEnt(ents []Id, i int) []Id {
+	ents[i] = ents[len(ents)-1]
+	return ents[:len(ents)-1]
+}
