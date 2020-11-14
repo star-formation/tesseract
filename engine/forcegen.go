@@ -15,10 +15,12 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-package tesseract
+package engine
 
 import (
 	"github.com/ethereum/go-ethereum/log"
+
+	"github.com/star-formation/tesseract/lib"
 )
 
 // ForceGen interface is implemented by force generators that generate linear
@@ -33,7 +35,7 @@ type ForceGen interface {
 	// UpdateForce returns linear force and torque.
 	// Zero force/torque should be returned as nil.
 	// UpdateForce is called by the physics system once per game frame.
-	UpdateForce(e Id, duration float64) (*V3, *V3)
+	UpdateForce(e uint64, duration float64) (*lib.V3, *lib.V3)
 
 	// IsExpired returns whether the force generator is expired.
 	// IsExpired is called by the physics system once per game frame update.
@@ -45,11 +47,11 @@ type DragForceGen struct {
 	DragCoef1, DragCoef2 float64
 }
 
-func (d *DragForceGen) UpdateForce(e Id, duration float64) (*V3, *V3) {
+func (d *DragForceGen) UpdateForce(e uint64, duration float64) (*lib.V3, *lib.V3) {
 	if S.Vel[e].IsZero() {
 		return nil, nil
 	}
-	vel := new(V3)
+	vel := new(lib.V3)
 	*vel = *(S.Vel[e])
 	velMag := vel.Magnitude()
 	drag := velMag*d.DragCoef1 + velMag*velMag*d.DragCoef2
@@ -70,7 +72,7 @@ type ThrustForceGen struct {
 	timeLeft float64
 }
 
-func (t *ThrustForceGen) UpdateForce(e Id, elapsed float64) (*V3, *V3) {
+func (t *ThrustForceGen) UpdateForce(e uint64, elapsed float64) (*lib.V3, *lib.V3) {
 	//log.Debug("ThrustForceGen.UpdateForce", "t", t.thrust)
 	var f float64
 	if t.timeLeft > elapsed {
@@ -92,19 +94,19 @@ func (t *ThrustForceGen) IsExpired() bool {
 
 // For Ship turning
 type TurnForceGen struct {
-	torque   *V3
+	torque   *lib.V3
 	timeLeft float64
 }
 
-func (t *TurnForceGen) UpdateForce(e Id, elapsed float64) (*V3, *V3) {
+func (t *TurnForceGen) UpdateForce(e uint64, elapsed float64) (*lib.V3, *lib.V3) {
 	tt := S.Rot[e].T.Transform(t.torque)
 
 	if t.timeLeft > elapsed {
 		t.timeLeft -= elapsed
-		return nil, new(V3).MulScalar(tt, elapsed)
+		return nil, new(lib.V3).MulScalar(tt, elapsed)
 	}
 
-	resTorque := new(V3).MulScalar(tt, t.timeLeft)
+	resTorque := new(lib.V3).MulScalar(tt, t.timeLeft)
 	t.timeLeft = 0
 	return nil, resTorque
 }

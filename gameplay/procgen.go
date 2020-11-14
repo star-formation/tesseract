@@ -16,8 +16,9 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package tesseract
+package gameplay
 
+/*
 // The ProcGen system procedurally generates the game world.
 // The ProcGen system is activated when players traverse new space/terrain.
 type ProcGen struct{}
@@ -29,12 +30,13 @@ func (pg *ProcGen) Init() error {
 	return nil
 }
 
-func (pg *ProcGen) Update(worldTime, elapsed float64, rf *RefFrame) error {
+func (pg *ProcGen) Update(worldTime, elapsed float64, rf *physics.RefFrame) error {
 	// Query hot entities new positions to determine whether we're traversing
 	// new space/terrain.
 	return nil
 }
 
-func (pg *ProcGen) IsHotPostUpdate(e Id) bool {
+func (pg *ProcGen) IsHotPostUpdate(e uint64) bool {
 	return false
 }
+*/

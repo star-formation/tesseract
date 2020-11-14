@@ -16,12 +16,33 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package tesseract
+package gameplay
 
+/*
 import (
 	"fmt"
 	"unicode"
 )
+
+const (
+	//
+	// System Name Letter Relative Weights
+	//
+	// https://en.wikipedia.org/wiki/List_of_writing_systems#List_of_writing_scripts_by_adoption
+	wLatin           = 6120
+	wChinese         = 1340
+	wDevanagari      = 820
+	wArabic          = 660
+	wBengaliAssamese = 300
+	wCyrillic        = 250
+	wKana            = 120
+	wJavanese        = 80
+	wHangul          = 79
+	wTelugu          = 74
+	wTamil           = 70
+	wGujarati        = 48
+)
+
 
 // TODO: check if we can use package unicode for more of this
 type Script struct {
@@ -198,3 +219,4 @@ func randLetter(s *Script) rune {
 		return randLetter(s)
 	}
 }
+*/

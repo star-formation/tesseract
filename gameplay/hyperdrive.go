@@ -15,10 +15,11 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-package tesseract
+package gameplay
 
-import "github.com/ethereum/go-ethereum/log"
+//import "github.com/ethereum/go-ethereum/log"
 
+/*
 //
 // The hyperdrive system implements travel through hyperspace.
 //
@@ -29,7 +30,7 @@ type Hyperdrive struct {
 type Hyperspace struct {
 	// Start position in galactic grid units (see galaxy.go)
 	Start *V3
-
+	
 	// Target the hyperdrive is locked onto
 	// TODO: support non-star targets
 	// TODO: support hyperdrive in arbitrary directions without target lock
@@ -110,3 +111,4 @@ func updateHyperdrive(wTime, elapsed float64, rf *RefFrame, e Id) {
 func (hd *Hyperdrive) IsHotPostUpdate(e Id) bool {
 	return S.Hyperspace[e] != nil
 }
+*/

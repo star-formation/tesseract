@@ -15,7 +15,11 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-package tesseract
+package engine
+
+import (
+	"github.com/star-formation/tesseract/physics"
+)
 
 // Types and Interfaces for the Entity-Component-System (ECS)
 // architectural pattern.
@@ -26,7 +30,7 @@ package tesseract
 // entities are ids, components are data and systems are functions.
 
 // Entities are ids.
-type Id uint64
+//type Id uint64
 
 // Components are data containers for entities.  They contain no game logic.
 type Component interface {
@@ -55,7 +59,7 @@ type System interface {
 	// hot ref frame.  Depending on the system, it may also update state for
 	// idle entities in the hot ref frame (e.g. if an area of effect weapon
 	// hits idle entities).
-	Update(worldTime, elapsed float64, rf *RefFrame) error
+	Update(worldTime, elapsed float64, rf *physics.RefFrame) error
 
 	// IsHotPostUpdate is called by the game engine once for each hot entity
 	// every game frame.  IsHotPostUpdate is not called if there are no hot
@@ -65,10 +69,10 @@ type System interface {
 	//
 	// Example: the classical mechanics system returns true for any entity
 	//          that has active force generators and false otherwise.
-	IsHotPostUpdate(Id) bool
+	IsHotPostUpdate(uint64) bool
 }
 
-func removeEnt(ents []Id, i int) []Id {
+func removeEnt(ents []uint64, i int) []uint64 {
 	ents[i] = ents[len(ents)-1]
 	return ents[:len(ents)-1]
 }

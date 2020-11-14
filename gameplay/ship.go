@@ -15,9 +15,13 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-package tesseract
+package gameplay
 
-// Ship classes are analogous to classical navy ship classes.
+import (
+	"github.com/star-formation/tesseract/lib"
+)
+
+// Ship classes are inspired by classical navy ship classes.
 // See https://en.wikipedia.org/wiki/Ship_class.
 //
 // Each class is uniquely identified by a set of constants defining physical
@@ -67,7 +71,7 @@ type ShipClass interface {
 	// By using a 3D vector we can configure ships that turn faster "up"/"down"
 	// (pitch) than "left"/"right" (yaw), making banked turns useful
 	// even in zero-g/vacuum (https://en.wikipedia.org/wiki/Banked_turn).
-	CMGTorqueCap() V3
+	CMGTorqueCap() lib.V3
 
 	// Hull/Armor/Shield Capacity in hit points.
 	HullHPCap() float64
@@ -145,8 +149,8 @@ func (s *WarmJet) MassBase() float64             { return massBaseWarmjet }
 func (s *WarmJet) BoundingSphereRadius() float64 { return radiusWarmjet }
 func (s *WarmJet) VolumeBase() float64           { return volumeBaseWarmjet }
 func (s *WarmJet) PackedVolumeBase() float64     { return packedVolumeBaseWarmjet }
-func (s *WarmJet) CMGTorqueCap() V3 {
-	return V3{cmgTorqueCapXWarmjet, cmgTorqueCapYWarmjet, cmgTorqueCapZWarmjet}
+func (s *WarmJet) CMGTorqueCap() lib.V3 {
+	return lib.V3{cmgTorqueCapXWarmjet, cmgTorqueCapYWarmjet, cmgTorqueCapZWarmjet}
 }
 func (s *WarmJet) HullHPCap() float64    { return hullHPCapWarmjet }
 func (s *WarmJet) CargoBayCap() float64  { return cargoBayCapWarmjet }

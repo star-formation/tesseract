@@ -15,13 +15,16 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-package tesseract
+package engine
 
 import (
 	"encoding/json"
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
+
+	"github.com/star-formation/tesseract/lib"
+	"github.com/star-formation/tesseract/physics"
 )
 
 const (
@@ -30,19 +33,19 @@ const (
 )
 
 type EntitySub struct {
-	entity        Id
+	entity        uint64
 	dataChan      chan []byte
 	keepAliveChan chan bool
 }
 
 type EntitySubData struct {
-	OE *OE
+	OE *physics.OE
 
-	Pos *V3
-	Vel *V3
+	Pos *lib.V3
+	Vel *lib.V3
 
-	Ori *Q
-	Rot *V3
+	Ori *lib.Q
+	Rot *lib.V3
 }
 
 func (es *EntitySub) Update() {
@@ -62,7 +65,7 @@ func (es *EntitySub) Update() {
 	es.dataChan <- b
 }
 
-func NewEntitySub(e Id) (<-chan []byte, chan<- bool) {
+func NewEntitySub(e uint64) (<-chan []byte, chan<- bool) {
 	dataChan := make(chan []byte, dataChanBufferSize)
 	keepAliveChan := make(chan bool, 1)
 	es := &EntitySub{e, dataChan, keepAliveChan}

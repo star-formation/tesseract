@@ -15,12 +15,16 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-package tesseract
+package physics
+
+import (
+	"github.com/star-formation/tesseract/lib"
+)
 
 // Star system barycenters are fixed points in the galactic reference frame.
 // In single-star systems, the barycenter equals the center of the star.
 type StarSystem struct {
-	barycenter *V3 // Position fixed in galactic frame
+	barycenter *lib.V3 // Position fixed in galactic frame
 	stars      []Star
 	planets    []Planet
 }

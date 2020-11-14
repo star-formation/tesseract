@@ -15,17 +15,18 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-package tesseract
+package lib
 
 import (
-    "sort"
-    "time"
+    //"sort"
+    //"time"
 )
 
 // Timers are actions scheduled for future execution.
 
 // The timer component is attachable to any entity and used for things like
 // delayed-effect weapons, manufacturing processes and skill training.
+/*
 type Timer struct {
     Id Id
     MS time.Time
@@ -67,3 +68,4 @@ func (tc *TimerComponent) RemoveEntity(id Id) {
     i := sort.Search(len(tc.Sorted), f)
     tc.Sorted = append(tc.Sorted[:i], tc.Sorted[i+1:]...)
 }
+*/

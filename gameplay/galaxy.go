@@ -16,8 +16,9 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package tesseract
+package gameplay
 
+/*
 // TODO: the central regions of the Milky Way are heavily obscured by dust.
 //
 // https://en.wikipedia.org/wiki/Baade%27s_Window
@@ -32,20 +33,24 @@ import (
 	"math"
 	"sort"
 	"strconv"
+
+	"github.com/star-formation/tesseract/lib"
+	"github.com/star-formation/tesseract/physics"
 )
 
-// Sector is a galactic 3D cube volume used by the procedural generation of
-// stars and other galactic-level features.
+// Sector is a 3D cube volume used to partition galaxies.
+// Sector is used by the procedural generation of stars and other
+// galactic-level features.
 type Sector struct {
-	// Galactic X,Y,Z in gridUnit
-	Corner *V3
+	// X,Y,Z in gridUnit
+	Corner *lib.V3
 
 	// Value between 0.0 and 1.0 denoting how much the sector has been
 	// explored by players == procedurally generated
 	Mapped float64
 
 	// Star positions are in gridUnit
-	Stars []*Star
+	Stars []*physics.Star
 }
 
 // Traverse enacts partial procedural generation of a sector.
@@ -62,7 +67,7 @@ func (s *Sector) Traverse() {
 
 	prob := (s.stellarDensity() / MassHist.AvgMass) * sectorTraversalFactor
 	if Rand.Float64() < prob {
-		star := NewStar(MassHist.randMass())
+		star := physics.NewStar(MassHist.randMass(Rand))
 		s.addStar(star)
 	}
 
@@ -72,7 +77,7 @@ func (s *Sector) Traverse() {
 	}
 }
 
-func (s *Sector) addStarFixed(newStar *Star, pos *V3) {
+func (s *Sector) addStarFixed(newStar *physics.Star, pos *lib.V3) {
 	newStarRF := &RefFrame{
 		Parent:      rootRF,
 		Pos:         pos,
@@ -85,8 +90,8 @@ func (s *Sector) addStarFixed(newStar *Star, pos *V3) {
 	S.AddStar(newStar, pos)
 }
 
-func (s *Sector) addStar(newStar *Star) {
-	p := &V3{}
+func (s *Sector) addStar(newStar *physics.Star) {
+	p := &lib.V3{}
 	randDist := func() float64 {
 		return (sectorSize/gridUnit)*Rand.Float64() - 1.0
 	}
@@ -97,7 +102,7 @@ func (s *Sector) addStar(newStar *Star) {
 	}
 
 	sectors := append(s.getAdjacents(), s)
-	x := new(V3)
+	x := new(lib.V3)
 
 NewPos:
 	randPos()
@@ -117,72 +122,19 @@ NewPos:
 	s.addStarFixed(newStar, p)
 }
 
-// getAdjacents returns the 26 cube sectors adjacent to s
-func (s *Sector) getAdjacents() []*Sector {
-	type P struct{ X, Y, Z int }
-	permutations := []P{
-		// all permutations with Z up
-		P{0, 0, 1},
-		P{1, 0, 1},
-		P{0, 1, 1},
-		P{1, 1, 1},
-
-		P{-1, 0, 1},
-		P{0, -1, 1},
-		P{-1, -1, 1},
-
-		P{1, -1, 1},
-		P{-1, 1, 1},
-
-		// all permutations with Z down
-		P{0, 0, -1},
-		P{1, 0, -1},
-		P{0, 1, -1},
-		P{1, 1, -1},
-
-		P{-1, 0, -1},
-		P{0, -1, -1},
-		P{-1, -1, -1},
-
-		P{1, -1, -1},
-		P{-1, 1, -1},
-
-		// all permutations with Z zero (except self)
-		// P{0, 0, 0},
-		P{1, 0, 0},
-		P{0, 1, 0},
-		P{1, 1, 0},
-
-		P{-1, 0, 0},
-		P{0, -1, 0},
-		P{-1, -1, 0},
-
-		P{1, -1, 0},
-		P{-1, 1, 0},
-	}
-
-	adjacents := make([]*Sector, 26)
-	a, b := new(V3), new(V3)
-	for i := 0; i < 26; i++ {
-		b.X = float64(permutations[i].X) * (sectorSize / gridUnit)
-		b.Y = float64(permutations[i].Y) * (sectorSize / gridUnit)
-		b.Z = float64(permutations[i].Z) * (sectorSize / gridUnit)
-		a.Add(s.Corner, b)
-		adjacents[i] = GetSector(a)
-	}
-
-	return adjacents
-}
-
-func GetSector(pos *V3) *Sector {
+func GetSector(pos *lib.V3) *Sector {
 	key := sectorKey(pos, true)
 	s, ok := S.Sectors[key]
 	if ok {
 		return s
 	} else {
-		newP := &V3{}
+		newP := &lib.V3{}
 		newP.X, newP.Y, newP.Z = pos.X, pos.Y, pos.Z
-		newS := &Sector{newP, 0.0, make([]*Star, 0)}
+		newS := &Sector{
+			Corner: newP,
+			Mapped: 0.0,
+			Stars: make([]*physics.Star, 0),
+		}
 		S.Sectors[key] = newS
 		return newS
 	}
@@ -192,7 +144,7 @@ func (s *Sector) Key() string {
 	return sectorKey(s.Corner, true)
 }
 
-func sectorKey(pos *V3, floor bool) string {
+func sectorKey(pos *lib.V3, floor bool) string {
 	format := func(f float64) string {
 		u := f / (sectorSize / gridUnit)
 		if floor {
@@ -278,3 +230,61 @@ func DebugSectors(onlyMapped bool) {
 	}
 
 }
+
+// getAdjacents returns the 26 cube sectors adjacent to s
+func (s *Sector) getAdjacents() []*Sector {
+	type P struct{ X, Y, Z int }
+	permutations := []P{
+		// all permutations with Z up
+		P{0, 0, 1},
+		P{1, 0, 1},
+		P{0, 1, 1},
+		P{1, 1, 1},
+
+		P{-1, 0, 1},
+		P{0, -1, 1},
+		P{-1, -1, 1},
+
+		P{1, -1, 1},
+		P{-1, 1, 1},
+
+		// all permutations with Z down
+		P{0, 0, -1},
+		P{1, 0, -1},
+		P{0, 1, -1},
+		P{1, 1, -1},
+
+		P{-1, 0, -1},
+		P{0, -1, -1},
+		P{-1, -1, -1},
+
+		P{1, -1, -1},
+		P{-1, 1, -1},
+
+		// all permutations with Z zero (except self)
+		// P{0, 0, 0},
+		P{1, 0, 0},
+		P{0, 1, 0},
+		P{1, 1, 0},
+
+		P{-1, 0, 0},
+		P{0, -1, 0},
+		P{-1, -1, 0},
+
+		P{1, -1, 0},
+		P{-1, 1, 0},
+	}
+
+	adjacents := make([]*Sector, 26)
+	for i := 0; i < 26; i++ {
+		a, b := new(lib.V3), new(lib.V3)
+		b.X = float64(permutations[i].X) * (sectorSize / gridUnit)
+		b.Y = float64(permutations[i].Y) * (sectorSize / gridUnit)
+		b.Z = float64(permutations[i].Z) * (sectorSize / gridUnit)
+		a.Add(s.Corner, b)
+		adjacents[i] = GetSector(a)
+	}
+
+	return adjacents
+}
+*/

@@ -15,7 +15,7 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-package tesseract
+package lib
 
 import (
 	"fmt"
@@ -27,6 +27,23 @@ import (
 //
 // Based primarily on chapters 2 and 9 in [1].
 //
+
+//
+// Math Constants
+//
+const (
+	TwoPi = 2 * math.Pi
+	
+	DBL_EPSILON = 2.2204460492503131E-16
+)
+
+var (
+	//
+	// Math
+	//
+	KHat = &V3{0, 0, 1}
+)
+
 type V3 struct {
 	X, Y, Z float64
 }
@@ -266,10 +283,10 @@ func DegToRad(degrees float64) float64 {
 
 func NormalizeAngle(a float64) float64 {
 	if a < 0 {
-		a += twoPi
+		a += TwoPi
 	}
-	if a > twoPi {
-		a -= twoPi
+	if a > TwoPi {
+		a -= TwoPi
 	}
 	return a
 }

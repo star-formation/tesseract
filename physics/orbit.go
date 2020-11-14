@@ -15,11 +15,13 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-package tesseract
+package physics
 
 import (
 	"fmt"
 	"math"
+
+	"github.com/star-formation/tesseract/lib"
 )
 
 // Types and functions for Orbital Mechanics.
@@ -33,6 +35,15 @@ import (
 // [2] https://en.wikipedia.org/wiki/Orbital_elements
 // [3] https://en.wikipedia.org/wiki/Specific_relative_angular_momentum
 //
+
+const (
+	// acceptable tolerance of errors of float64 calculations compared to
+	// analytical or precalculated solutions
+	tolerance = 0.000000000000001
+	
+	eccentricAnomalyTolerance           = 1e-6
+	hyperbolicEccentricAnomalyTolerance = 1e-6
+)
 
 // OE holds orbital elements [2] and related variables to uniquely represent
 // a specific orbit in the simplified two-body model.
@@ -52,14 +63,18 @@ type OE struct {
 	h, i, Ω, e, ω, θ, μ float64
 }
 
+func (o *OE) Mu() float64 {
+	return o.μ
+}
+
 func (o *OE) Debug() {
 	fmt.Printf("h: %f i: %f Ω: %f e: %f ω: %f θ: %f μ: %f\n",
-		o.h, RadToDeg(o.i), RadToDeg(o.Ω), o.e, RadToDeg(o.ω), RadToDeg(o.θ), o.μ)
+		o.h, lib.RadToDeg(o.i), lib.RadToDeg(o.Ω), o.e, lib.RadToDeg(o.ω), lib.RadToDeg(o.θ), o.μ)
 }
 
 func (o *OE) Fmt() string {
 	return fmt.Sprintf("h: %.14g i: %.12f Ω: %.12f e: %.12f ω: %.12f θ: %.12f μ: %.4g",
-		o.h, RadToDeg(o.i), RadToDeg(o.Ω), o.e, RadToDeg(o.ω), RadToDeg(o.θ), o.μ)
+		o.h, lib.RadToDeg(o.i), lib.RadToDeg(o.Ω), o.e, lib.RadToDeg(o.ω), lib.RadToDeg(o.θ), o.μ)
 }
 
 // SemimajorAxis returns the semimajor axis of the orbit.
@@ -125,32 +140,26 @@ func (o *OE) Speed() float64 {
 func (o *OE) Period() float64 {
 	e, μ := o.e, o.μ
 	if e < 1 { // elliptical and circular
-		return twoPi * math.Sqrt(math.Pow(o.SemimajorAxis(), 3)/μ)
+		return lib.TwoPi * math.Sqrt(math.Pow(o.SemimajorAxis(), 3)/μ)
 	}
 
 	// parabolic and hyperbolic
 	return math.Inf(1) // positive infinity
 }
 
-// TrueAnomalyFromTime returns the orbit's true anomaly in radians at time t1
-// using t0 as the time of the set true anomaly.
-// TrueAnomalyFromTime panics if t1 is not greater than t0.
-func (o *OE) TrueAnomalyFromTime(t0, t1 float64) float64 {
-	if t1 <= t0 {
-		panic("t1 must be greater than t0")
-	}
-
+// TrueAnomalyFromTime returns the orbit's true anomaly in radians at time t.
+func (o *OE) TrueAnomalyFromTime(t float64) float64 {
 	h, e, μ := o.h, o.e, o.μ
 	var θ float64
 
 	switch {
 	case e == 0: // circular
 		// Chapter 3.3
-		θ = (twoPi / o.Period()) * t1
+		θ = (lib.TwoPi / o.Period()) * t
 
 	case e < 1: // elliptical
 		// Eqn 3.8
-		Me := (twoPi / o.Period()) * t1
+		Me := (lib.TwoPi / o.Period()) * t
 		// Algorithm 3.1
 		E := eccentricAnomaly(e, Me)
 		// Eqn 3.13a
@@ -159,7 +168,7 @@ func (o *OE) TrueAnomalyFromTime(t0, t1 float64) float64 {
 
 	case e == 1: // parabolic
 		// Eqn 3.31
-		Mp := (μ * μ * t1) / (h * h * h)
+		Mp := (μ * μ * t) / (h * h * h)
 		// Eqn 3.32
 		x0 := (3*Mp + math.Sqrt(math.Pow(3*Mp, 2)+1))
 		x1 := math.Pow(x0, 1.0/3.0) - math.Pow(x0, -1.0/3.0)
@@ -169,7 +178,7 @@ func (o *OE) TrueAnomalyFromTime(t0, t1 float64) float64 {
 		// Eqn 3.34
 		x0 := (μ * μ) / (h * h * h)
 		x1 := math.Pow(e*e-1, 3.0/2.0)
-		Mh := x0 * x1 * t1
+		Mh := x0 * x1 * t
 		// Algorithm 3.2
 		F := hyperbolicEccentricAnomaly(e, Mh)
 		// Eqn 3.44b
@@ -177,13 +186,13 @@ func (o *OE) TrueAnomalyFromTime(t0, t1 float64) float64 {
 		θ = 2 * math.Atan(x2)
 	}
 
-	return NormalizeAngle(θ)
+	return lib.NormalizeAngle(θ)
 }
 
 // TimeFromTrueAnomaly returns the time for a given true anomaly.
 func (o *OE) TimeFromTrueAnomaly(θ float64) float64 {
 	// TODO: normalize / mod
-	if θ < 0 || θ > twoPi {
+	if θ < 0 || θ > lib.TwoPi {
 		panic("ta must be in 0-2π radians")
 	}
 	h, e, μ := o.h, o.e, o.μ
@@ -201,7 +210,7 @@ func (o *OE) TimeFromTrueAnomaly(θ float64) float64 {
 		// Eqn 3.14
 		Me := E - e*math.Sin(E)
 		// Eqn 3.15
-		t = (Me / twoPi) * o.Period()
+		t = (Me / lib.TwoPi) * o.Period()
 	case e == 1: // parabolic
 		// Eqn 3.30 (substitution for Mp)
 		x0 := math.Tan(θ / 2)
@@ -261,17 +270,17 @@ NewApproximation:
 // StateVectorToOrbital returns the orbital elements converted from the orbital
 // state vector and standard gravitational parameter of the primary.
 // See Algorithm 4.2 and https://en.wikipedia.org/wiki/Orbital_state_vectors
-func StateVectorToOrbital(r, v *V3, μ float64) *OE {
+func StateVectorToOrbital(r, v *lib.V3, μ float64) *OE {
 	dist := r.Magnitude()
 	speed := v.Magnitude()
 	radialVel := r.ScalarProduct(v) / dist
 
-	h := new(V3).VectorProduct(r, v)
+	h := new(lib.V3).VectorProduct(r, v)
 	hMag := h.Magnitude()
 
 	i := math.Acos(h.Z / hMag)
 
-	nodeLine := new(V3).VectorProduct(KHat, h)
+	nodeLine := new(lib.V3).VectorProduct(lib.KHat, h)
 	nodeLineMag := nodeLine.Magnitude()
 
 	Ω := 0.0
@@ -284,10 +293,10 @@ func StateVectorToOrbital(r, v *V3, μ float64) *OE {
 
 	// x0, .., xn hold intermediate calculations for eq 4.10
 	x0 := (speed * speed) - (μ / dist)
-	x1 := new(V3).MulScalar(r, x0)
-	x2 := new(V3).MulScalar(v, dist*radialVel)
-	x3 := new(V3).Sub(x1, x2)
-	eVec := new(V3).MulScalar(x3, 1/μ)
+	x1 := new(lib.V3).MulScalar(r, x0)
+	x2 := new(lib.V3).MulScalar(v, dist*radialVel)
+	x3 := new(lib.V3).Sub(x1, x2)
+	eVec := new(lib.V3).MulScalar(x3, 1/μ)
 	e := eVec.Magnitude()
 
 	ω := 0.0
@@ -310,26 +319,26 @@ func StateVectorToOrbital(r, v *V3, μ float64) *OE {
 // Perifocal coordinates are used in an intermediate step.
 // See Algorithm 4.5 and
 // https://en.wikipedia.org/wiki/Perifocal_coordinate_system
-func (o *OE) OrbitalToStateVector() (*V3, *V3) {
+func (o *OE) OrbitalToStateVector() (*lib.V3, *lib.V3) {
 	h, i, Ω, e, ω, θ, μ := o.h, o.i, o.Ω, o.e, o.ω, o.θ, o.μ
 	// x0, ..., xn hold intermediate calculations
 	x0 := ((h * h) / μ)
 	x0 *= (1 / (1 + e*math.Cos(θ)))
-	periPos := &V3{
+	periPos := &lib.V3{
 		x0 * math.Cos(θ),
 		x0 * math.Sin(θ),
 		0.0}
 
 	x1 := μ / h
 
-	periVel := &V3{
+	periVel := &lib.V3{
 		x1 * (-math.Sin(θ)),
 		x1 * (e + math.Cos(θ)),
 		0.0,
 	}
 
 	// Eqn 4.49
-	perifocalToHostcentric := &M3{
+	perifocalToHostcentric := &lib.M3{
 		-math.Sin(Ω)*math.Cos(i)*math.Sin(ω) + math.Cos(Ω)*math.Cos(ω),
 		-math.Sin(Ω)*math.Cos(i)*math.Cos(ω) - math.Cos(Ω)*math.Sin(ω),
 		math.Sin(Ω) * math.Sin(i),
@@ -347,4 +356,22 @@ func (o *OE) OrbitalToStateVector() (*V3, *V3) {
 	vel := perifocalToHostcentric.Transform(periVel)
 
 	return pos, vel
+}
+
+// PointsApprox returns n points approximating the orbit.
+// The points are ordered by orbital direction and evenly spaced in orbital
+// time but not in distance (unless the orbit is circular).
+func (o *OE) PointsApprox(n uint) []lib.V3 {
+	var t float64
+	points := make([]lib.V3, n)
+	period := o.Period()
+	interval := period / float64(n)
+	for i := uint(0); i < n; i++ {
+		θ := o.TrueAnomalyFromTime(t)
+		o.θ = θ
+		pos, _ := o.OrbitalToStateVector()
+		points[i] = *pos
+		t += interval
+	}
+	return points
 }

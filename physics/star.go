@@ -16,7 +16,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package tesseract
+package physics
 
 import (
 	"bytes"
@@ -26,11 +26,32 @@ import (
 	"io/ioutil"
 	"math"
 	"strconv"
+
+	xrand "golang.org/x/exp/rand"
+	
+	"github.com/star-formation/tesseract/lib"
 )
+var (
+	massHistogramFile = "data/Galaxy_stellar_mass_histogram.txt"
+)
+
+type Body struct {
+	Name string
+
+	Mass   float64
+	Radius float64
+
+	Orbit    *OE
+	Rotation *lib.V3
+
+	Atmosphere *Atmosphere
+
+	MagField float64
+}
 
 // Star is a unique star.
 type Star struct {
-	Entity Id
+	Entity uint64
 	Body
 
 	SpectralType rune
@@ -42,13 +63,13 @@ type Star struct {
 // are derived from the mass.
 func NewStar(mass float64) *Star {
 	star := &Star{}
-	star.Body.Name = starName()
+	//star.Body.Name = starName()
 	star.Body.Mass = mass
-	star.Body.Radius = starRadius(mass) * solarRadius
+	star.Body.Radius = StarRadius(mass) * solarRadius
 
-	star.SpectralType = spectralType(mass)
-	star.Luminosity = starLum(mass) * solarLum
-	star.SurfaceTemp = starSurfaceTemp(star.Luminosity, star.Body.Radius)
+	star.SpectralType = SpectralType(mass)
+	star.Luminosity = StarLum(mass) * solarLum
+	star.SurfaceTemp = StarSurfaceTemp(star.Luminosity, star.Body.Radius)
 	return star
 }
 
@@ -71,14 +92,14 @@ func (s *Star) DefaultOrbit() *OE {
 // https://www.planetarybiology.com/calculating_habitable_zone.html
 // TODO: update to latest research
 func (s *Star) HabitableZone() (float64, float64) {
-	lum := starLum(s.Body.Mass)
+	lum := StarLum(s.Body.Mass)
 	ri := math.Sqrt(lum / 1.1)
 	ro := math.Sqrt(lum / 0.53)
 	return ri, ro
 }
 
 // https://en.wikipedia.org/wiki/Stellar_classification
-func spectralType(mass float64) rune {
+func SpectralType(mass float64) rune {
 	switch {
 	case mass < 0.50:
 		return 'M'
@@ -98,7 +119,7 @@ func spectralType(mass float64) rune {
 }
 
 // TODO: update to the latest research on star mass radius relation
-func starRadius(mass float64) float64 {
+func StarRadius(mass float64) float64 {
 	if mass < 1.66 {
 		return 1.06 * math.Pow(mass, 0.945)
 	} else {
@@ -107,7 +128,7 @@ func starRadius(mass float64) float64 {
 }
 
 // https://en.wikipedia.org/wiki/Mass%E2%80%93luminosity_relation
-func starLum(mass float64) float64 {
+func StarLum(mass float64) float64 {
 	var a, b float64
 	switch {
 	case mass < 0.43:
@@ -123,7 +144,7 @@ func starLum(mass float64) float64 {
 }
 
 // https://en.wikipedia.org/wiki/Stefan%E2%80%93Boltzmann_law#Temperature_of_stars
-func starSurfaceTemp(lum, r float64) float64 {
+func StarSurfaceTemp(lum, r float64) float64 {
 	return math.Pow((lum / (4 * math.Pi * stefanBoltzmann * (r * r))), 0.25)
 }
 
@@ -192,14 +213,14 @@ func getMassHistogram() *MassHistogram {
 	return mh
 }
 
-func (mh *MassHistogram) randMass() float64 {
-	x := Rand.Intn(mh.TotalStars)
+func (mh *MassHistogram) randMass(r *xrand.Rand) float64 {
+	x := r.Intn(mh.TotalStars)
 	i, count := 0, 0
 	for {
 		count += mh.Ranges[i].StarCount
 		if x <= count {
 
-			return mh.Ranges[i].Start + mh.Ranges[i].Range*Rand.Float64()
+			return mh.Ranges[i].Start + mh.Ranges[i].Range*r.Float64()
 		}
 		i++
 	}

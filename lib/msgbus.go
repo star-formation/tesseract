@@ -15,22 +15,22 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-package tesseract
+package lib
 
 // MessageBus is a channel-based message / event bus where systems
 // post messages delivered to all subscribers.
 type MessageBus struct {
-	channels []chan<- []byte
+	Channels []chan<- []byte
 }
 
 func (mb *MessageBus) Subscribe() <-chan []byte {
 	c := make(chan []byte, 10)
-	mb.channels = append(mb.channels, c)
+	mb.Channels = append(mb.Channels, c)
 	return c
 }
 
 func (mb *MessageBus) Post(msg []byte) {
-	for _, c := range mb.channels {
+	for _, c := range mb.Channels {
 		c <- msg
 	}
 }

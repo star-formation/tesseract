@@ -15,18 +15,29 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-package tesseract
+package lib
 
 import (
-	"os"
-
-	"github.com/ethereum/go-ethereum/log"
+	xrand "golang.org/x/exp/rand"
 )
 
-func init() {
-	log.Root().SetHandler(log.MultiHandler(
-		log.StreamHandler(os.Stderr, log.TerminalFormat(true)),
-		log.LvlFilterHandler(
-			log.LvlDebug,
-			log.Must.FileHandler("tesseract_errors.json", log.JSONFormat()))))
+//naclbox "github.com/kevinburke/nacl/box"
+
+/* TODO: this is for testing
+
+   This will be replaced with a on-chain random beacon for source of
+   deterministic _and_ unpredictable entropy.
+
+   See https://dfinity.org/static/dfinity-consensus-0325c35128c72b42df7dd30c22c41208.pdf
+   and https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md
+*/
+
+func NewRand(seed uint64) (*xrand.Rand, error) {
+	// We use https://www.godoc.org/golang.org/x/exp/rand#PCGSource
+	// as the math/rand RNG algo is planned to be deprecated.
+	// See https://github.com/golang/go/issues/21835
+	//
+	// x/exp/rand.NewSource defaults to PCGSource
+	src := xrand.NewSource(seed)
+	return xrand.New(src), nil
 }

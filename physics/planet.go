@@ -15,12 +15,43 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-package tesseract
+package physics
 
 import "math"
 
+const (
+	//
+	// Physics and Astrophysics Constants (real world)
+	//
+	speedOfLight          = 299792458.0 // m/s
+	GravitationalConstant = 6.674e-11
+	stefanBoltzmann       = 5.670373e-8
+
+	aum  = 149597870700.0    // meters per AU
+	AULY = 63241.07708426628 // AU per light year
+	AUPC = 2.06265e5         // AU per parsec
+	lypc = 3.26156           // light years per parsec
+
+	milkyWayDiscHeight = 2000.0 // ly
+	radiusLocalBubble  = 150.0  // ly
+
+	// https://en.wikipedia.org/wiki/Solar_mass
+	// https://en.wikipedia.org/wiki/Solar_luminosity
+	// https://en.wikipedia.org/wiki/Solar_radius
+	solarMass   = 1.98855e30 // kg
+	solarLum    = 3.828e26   // W
+	solarRadius = 6.957e8    // m
+
+	// https://en.wikipedia.org/wiki/Earth_mass
+	earthMass             = 5.9722e24 // kg
+	earthRadius           = 6.3781e6  // km
+	earthMu               = 3.986004418e14
+	earthSeaLevelPressure = 101325 // pascals
+	g0                    = 9.80665
+)
+
 type Planet struct {
-	Entity Id
+	Entity uint64
 	Mass   float64
 	Radius float64
 

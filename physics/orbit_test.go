@@ -15,7 +15,7 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-package tesseract
+package physics
 
 import (
 	"testing"
@@ -129,6 +129,10 @@ func TestFromTimeHyperbolic(t *testing.T) {
 		t.Errorf("altitude: got: \n%v, expected: \n%v", alt, exAlt)
 	}
 
+}
+
+func TestPointsApprox(t *testing.T) {
+	
 }
 
 //

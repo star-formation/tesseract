@@ -15,10 +15,12 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-package tesseract
+package physics
 
 import (
 	"math"
+
+	"github.com/star-formation/tesseract/lib"
 )
 
 //
@@ -60,7 +62,7 @@ type BoundingVolume interface {
 }
 
 type BoundingSphere struct {
-	P *V3
+	P *lib.V3
 	R float64
 }
 
@@ -75,7 +77,7 @@ func (s *BoundingSphere) Overlaps(bv BoundingVolume) bool {
 	}
 
 	s2 := bv.(*BoundingSphere)
-	return new(V3).Sub(s.P, s2.P).SquareMagnitude() < (s.R+s2.R)*(s.R+s2.R)
+	return new(lib.V3).Sub(s.P, s2.P).SquareMagnitude() < (s.R+s2.R)*(s.R+s2.R)
 }
 
 func (s *BoundingSphere) NewBoundingVolume(bv BoundingVolume) BoundingVolume {
@@ -85,20 +87,20 @@ func (s *BoundingSphere) NewBoundingVolume(bv BoundingVolume) BoundingVolume {
 
 	s2 := bv.(*BoundingSphere)
 	radiusDelta := s2.R - s.R
-	posDelta := new(V3).Sub(s2.P, s.P)
+	posDelta := new(lib.V3).Sub(s2.P, s.P)
 	distance := posDelta.Magnitude()
 
 	// return copy of either sphere if it fully encloses the other
 	if math.Abs(radiusDelta) >= distance {
 		if s.R > s2.R {
-			return &BoundingSphere{new(V3).Set(s.P), s.R}
+			return &BoundingSphere{new(lib.V3).Set(s.P), s.R}
 		} else {
-			return &BoundingSphere{new(V3).Set(s2.P), s2.R}
+			return &BoundingSphere{new(lib.V3).Set(s2.P), s2.R}
 		}
 	} else {
 		// overlapping spheres; create new sphere enclosing both
 		newR := (s.R + s2.R + distance) * 0.5
-		newP := new(V3).Set(s.P)
+		newP := new(lib.V3).Set(s.P)
 		// adjust position of new sphere towards s2.P
 		if distance > 0 {
 			// newP += posDelta * ((newR - s.R) / distance)
@@ -129,7 +131,7 @@ func (s *BoundingSphere) SurfaceArea() float64 {
 // Each leaf     holds a bounding volume of a single entity.
 type BVHNode struct {
 	parent, left, right *BVHNode
-	entity              Id // nil for non-leaf nodes
+	entity              uint64 // nil for non-leaf nodes
 	volume              BoundingVolume
 }
 
@@ -137,7 +139,7 @@ func (n *BVHNode) IsLeaf() bool {
 	return n.entity != 0
 }
 
-func (n *BVHNode) Insert(e Id, v BoundingVolume) {
+func (n *BVHNode) Insert(e uint64, v BoundingVolume) {
 	if n.IsLeaf() {
 		n.left = &BVHNode{n, nil, nil, n.entity, n.volume}
 		n.right = &BVHNode{n, nil, nil, e, v}
@@ -178,24 +180,24 @@ func (n *BVHNode) UpdateBoundingVolume() {
 	}
 }
 
-func (n *BVHNode) PotentialContacts() [][2]Id {
+func (n *BVHNode) PotentialContacts() [][2]uint64 {
 	if n.IsLeaf() {
 		return nil
 	}
 
-	contacts := make([][2]Id, 0)
+	contacts := make([][2]uint64, 0)
 	// recursively descend into child nodes, appending contacts
 	potentialContactsWith(n.left, n.right, &contacts)
 	return contacts
 }
 
-func potentialContactsWith(n1, n2 *BVHNode, contacts *[][2]Id) {
+func potentialContactsWith(n1, n2 *BVHNode, contacts *[][2]uint64) {
 	if !n1.volume.Overlaps(n2.volume) {
 		return
 	}
 
 	if n1.IsLeaf() && n2.IsLeaf() {
-		*contacts = append(*contacts, [2]Id{n1.entity, n2.entity})
+		*contacts = append(*contacts, [2]uint64{n1.entity, n2.entity})
 		return
 	}
 

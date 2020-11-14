@@ -15,9 +15,12 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-package tesseract
+package engine
 
 import (
+	"github.com/star-formation/tesseract/lib"
+	"github.com/star-formation/tesseract/physics"
+	
 	"github.com/ethereum/go-ethereum/log"
 )
 
@@ -38,7 +41,7 @@ func (p *Physics) Init() error {
 	return nil
 }
 
-func (p *Physics) Update(worldTime, elapsed float64, rf *RefFrame) error {
+func (p *Physics) Update(worldTime, elapsed float64, rf *physics.RefFrame) error {
 	//log.Debug("Physics ====")
 	for e, _ := range S.HotEnts[rf] {
 		// TODO: after initial orbit debug, add len == 0 check
@@ -51,15 +54,15 @@ func (p *Physics) Update(worldTime, elapsed float64, rf *RefFrame) error {
 	return nil
 }
 
-func (p *Physics) IsHotPostUpdate(e Id) bool {
+func (p *Physics) IsHotPostUpdate(e uint64) bool {
 	return S.ForceGens[e] != nil && len(S.ForceGens[e]) > 0
 }
 
 //
 // Internal functions
 //
-func updateClassicalMechanics(worldTime, elapsed float64, rf *RefFrame, e Id) {
-	var pos, vel *V3
+func updateClassicalMechanics(worldTime, elapsed float64, rf *physics.RefFrame, e uint64) {
+	var pos, vel *lib.V3
 	if S.Orb[e] != nil {
 		log.Debug("updateClassicalMechanics", "oe", S.Orb[e].Fmt())
 		pos, vel = S.Orb[e].OrbitalToStateVector()
@@ -72,7 +75,7 @@ func updateClassicalMechanics(worldTime, elapsed float64, rf *RefFrame, e Id) {
 	log.Debug("updateClassicalMechanics", "e", e, "len(fgs)", len(S.ForceGens[e]))
 
 	// update force generators
-	linearForce, torque := new(V3), new(V3)
+	linearForce, torque := new(lib.V3), new(lib.V3)
 	expiredFGs := make(map[int]bool, 0)
 	for i, fg := range S.ForceGens[e] {
 		lf, t := fg.UpdateForce(e, elapsed)
@@ -93,7 +96,7 @@ func updateClassicalMechanics(worldTime, elapsed float64, rf *RefFrame, e Id) {
 	if !linearForce.IsZero() {
 		// update linear acceleration from forces
 		inverseMass := float64(1) / *(S.Mass[e])
-		acc := new(V3)
+		acc := new(lib.V3)
 		acc.AddScaledVector(linearForce, inverseMass)
 		// update linear velocity
 		vel.AddScaledVector(acc, elapsed)
@@ -124,7 +127,7 @@ func updateClassicalMechanics(worldTime, elapsed float64, rf *RefFrame, e Id) {
 	updateInertiaTensor(S.Rot[e].IITW, S.Rot[e].IITB, S.Rot[e].T)
 
 	if S.Orb[e] != nil {
-		S.Orb[e] = StateVectorToOrbital(pos, vel, S.Orb[e].μ)
+		S.Orb[e] = physics.StateVectorToOrbital(pos, vel, S.Orb[e].Mu())
 		log.Debug("updateClassicalMechanics", "oe2", S.Orb[e].Fmt())
 	} else {
 		S.Pos[e] = pos
@@ -152,16 +155,16 @@ func updateClassicalMechanics(worldTime, elapsed float64, rf *RefFrame, e Id) {
 
 // https://en.wikipedia.org/wiki/List_of_moments_of_inertia
 //                       mass, width, height, depth
-func InertiaTensorCuboid(m, w, h, d float64) *M3 {
+func InertiaTensorCuboid(m, w, h, d float64) *lib.M3 {
 	h2 := h * h
 	w2 := w * w
 	d2 := d * d
 	x := (1.0 / 12.0) * m
-	return &M3{x * (h2 + d2), 0, 0, 0, x * (w2 + d2), 0, 0, 0, x * (w2 + h2)}
+	return &lib.M3{x * (h2 + d2), 0, 0, 0, x * (w2 + d2), 0, 0, 0, x * (w2 + h2)}
 }
 
 // Update transform matrix (m) from position (p) and orientation (o)
-func updateTransformMatrix(m *M4, p *V3, o *Q) {
+func updateTransformMatrix(m *lib.M4, p *lib.V3, o *lib.Q) {
 	m[0] = 1 - 2*o.J*o.J - 2*o.K*o.K
 	m[1] = 2*o.I*o.J - 2*o.R*o.K
 	m[2] = 2*o.I*o.K + 2*o.R*o.J
@@ -181,7 +184,7 @@ func updateTransformMatrix(m *M4, p *V3, o *Q) {
 // update the inverse inertia tensor in world space coordinates (tw) using
 // the inverse inertia tensor in body space coordinates (tb) and
 // the transform matrix (tm)
-func updateInertiaTensor(tw, tb *M3, tm *M4) {
+func updateInertiaTensor(tw, tb *lib.M3, tm *lib.M4) {
 	t4 := tm[0]*tb[0] + tm[1]*tb[3] + tm[2]*tb[6]
 	t9 := tm[0]*tb[1] + tm[1]*tb[4] + tm[2]*tb[7]
 	t14 := tm[0]*tb[2] + tm[1]*tb[5] + tm[2]*tb[8]
@@ -204,7 +207,7 @@ func updateInertiaTensor(tw, tb *M3, tm *M4) {
 }
 
 /*
-func (p *Physics) TorqueAtBodyPoint(e Id, rf *RefFrame, force, bodyPoint *V3) *V3 {
+func (p *Physics) TorqueAtBodyPoint(e uint64, rf *physics.RefFrame, force, bodyPoint *lib.V3) *lib.V3 {
 	worldPoint := bodyToWorldPoint(bodyPoint)
 	return TorqueAtPoint(e, rf, force, worldPoint)
 }
@@ -213,8 +216,8 @@ func (p *Physics) TorqueAtBodyPoint(e Id, rf *RefFrame, force, bodyPoint *V3) *V
 //       of mass and torque, but adds torque _on_top_of_ the force-at-point!
 // See https://www.gamedev.net/forums/topic/664930-force-and-torque/
 // TODO: clarify this assumption on e.g. position/source of force
-func (p *Physics) TorqueAtPoint(e Id, rf *RefFrame, force, worldPoint *V3) *V3 {
-	point := new(V3)
+func (p *Physics) TorqueAtPoint(e uint64, rf *physics.RefFrame, force, worldPoint *lib.V3) *lib.V3 {
+	point := new(lib.V3)
 	*point = *worldPoint
 	worldPoint.Sub(worldPoint, S.PC[e])
 	return worldPoint.VectorProduct(worldPoint, force)

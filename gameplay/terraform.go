@@ -16,20 +16,25 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package tesseract
+package gameplay
 
+/*
 import (
 	"encoding/csv"
 	"io/ioutil"
 	"strings"
 
-	xrand "golang.org/x/exp/rand"
+	//"github.com/star-formation/tesseract/lib"
+	"github.com/star-formation/tesseract/physics"
 )
 
 var (
-	Rand     *xrand.Rand
-	MassHist *MassHistogram
+	MassHist *physics.MassHistogram
 )
+
+func init() {
+	MassHist = getMassHistogram()
+}
 
 //
 // PLANETS
@@ -41,20 +46,6 @@ const (
 	Gas
 )
 
-type Body struct {
-	Name string
-
-	Mass   float64
-	Radius float64
-
-	Orbit    *OE
-	Rotation *V3
-
-	Atmosphere *Atmosphere
-
-	MagField float64
-}
-
 //
 // MOONS
 //
@@ -65,7 +56,7 @@ type Moon struct {
 // that the following always holds:
 // * The Hill Spheres of two bodies never overlap; by comparing the
 //   semi-major axes of two orbits
-func rollOrbits(n uint) []*OE {
+func rollOrbits(n uint) []*physics.OE {
 	// This Hill Sphere intersection test is simplified in that it does not
 	// take into account orbital inclination, longitude of the ascending node,
 	// argument of periapsis nor synchronocy of orbital periods.
@@ -73,7 +64,7 @@ func rollOrbits(n uint) []*OE {
 	// in the orbital plane and that the two bodies' hill spheres
 	// never overlap at their apastron.
 
-	return []*OE{}
+	return []*physics.OE{}
 }
 
 //
@@ -83,29 +74,29 @@ func rollPlanetCount() uint {
 	return 1
 }
 
-func rollPlanets() []*Planet {
+func rollPlanets() []*physics.Planet {
 	c := rollPlanetCount()
 	//orbits := rollOrbits(c)
-	planets := make([]*Planet, c)
+	planets := make([]*physics.Planet, c)
 	for i := 0; i < int(c); i++ {
 		planets = append(planets, rollPlanet())
 	}
 	return planets
 }
 
-func rollPlanet() *Planet {
-	return &Planet{}
+func rollPlanet() *physics.Planet {
+	return &physics.Planet{}
 }
 
-func rollTerraOrGas(mass, float64, orbit *OE, star Star) PlanetBase {
+func rollTerraOrGas(mass, float64, orbit *physics.OE, star physics.Star) PlanetBase {
 	return Terra
 }
 
-func rollPlanetMass(orbit *OE) float64 {
+func rollPlanetMass(orbit *physics.OE) float64 {
 	return 0
 }
 
-func genPlanetName(p *Planet) string {
+func genPlanetName(p *physics.Planet) string {
 	if true {
 		return rollNameEpic(p)
 	} else {
@@ -113,18 +104,18 @@ func genPlanetName(p *Planet) string {
 	}
 }
 
-func rollNameEpic(p *Planet) string {
+func rollNameEpic(p *physics.Planet) string {
 	return ""
 }
 
 //
 // Moons
 //
-func rollMoonCount(p *Planet) uint {
+func rollMoonCount(p *physics.Planet) uint {
 	return 1
 }
 
-func rollMoons(p *Planet) []*Moon {
+func rollMoons(p *physics.Planet) []*Moon {
 	c := rollMoonCount(p)
 	//orbits := rollOrbits(c)
 	moons := make([]*Moon, c)
@@ -157,7 +148,7 @@ func parseExoplanetCatalog() {
 	}
 
 }
-*/
+
 //
 // File Utils
 //
@@ -172,24 +163,4 @@ func csvReader(fileName string) *csv.Reader {
 	_, _ = csvReader.Read() // Skip header line
 	return csvReader
 }
-
-//naclbox "github.com/kevinburke/nacl/box"
-
-/* TODO: this is for testing
-
-   This will be replaced with a on-chain random beacon for source of
-   deterministic _and_ unpredictable entropy.
-
-   See https://dfinity.org/static/dfinity-consensus-0325c35128c72b42df7dd30c22c41208.pdf
-   and https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md
 */
-
-func NewRand(seed uint64) (*xrand.Rand, error) {
-	// We use https://www.godoc.org/golang.org/x/exp/rand#PCGSource
-	// as the math/rand RNG algo is planned to be deprecated.
-	// See https://github.com/golang/go/issues/21835
-	//
-	// x/exp/rand.NewSource defaults to PCGSource
-	src := xrand.NewSource(seed)
-	return xrand.New(src), nil
-}

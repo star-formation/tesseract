@@ -15,12 +15,15 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-package tesseract
+package engine
 
+/*
 import (
 	"fmt"
 	"strconv"
 	//"github.com/ethereum/go-ethereum/log"
+
+	"github.com/star-formation/tesseract/lib"
 )
 
 // Actions are authenticated requests to modify the game state.
@@ -52,10 +55,10 @@ func HandleAction(j map[string]interface{}) error {
 		x := torque["x"].(float64)
 		y := torque["y"].(float64)
 		z := torque["z"].(float64)
-		ar = &ActionRotate{Id(e), &V3{x, y, z}, duration}
+		ar = &ActionRotate{e, &lib.V3{x, y, z}, duration}
 	} else {
 		f := params["force"].(float64)
-		ar = &ActionEngineThrust{Id(e), f, duration}
+		ar = &ActionEngineThrust{e, f, duration}
 	}
 	GE.actionChan <- ar
 
@@ -63,8 +66,8 @@ func HandleAction(j map[string]interface{}) error {
 }
 
 type ActionRotate struct {
-	entity   Id
-	t        *V3 // torque
+	entity   uint64
+	t        *lib.V3 // torque
 	duration float64
 }
 
@@ -79,7 +82,7 @@ func (a *ActionRotate) Execute() error {
 }
 
 type ActionEngineThrust struct {
-	entity   Id
+	entity   uint64
 	thrust   float64
 	duration float64
 }
@@ -88,3 +91,4 @@ func (a *ActionEngineThrust) Execute() error {
 	S.AddForceGen(a.entity, &ThrustForceGen{a.thrust, a.duration})
 	return nil
 }
+*/

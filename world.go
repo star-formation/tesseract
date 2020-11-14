@@ -20,7 +20,16 @@ package tesseract
 import (
 	"time"
 
+	xrand "golang.org/x/exp/rand"
 	"github.com/ethereum/go-ethereum/log"
+
+	"github.com/star-formation/tesseract/lib"
+	"github.com/star-formation/tesseract/physics"
+	"github.com/star-formation/tesseract/engine"
+)
+
+var (
+	Rand     *xrand.Rand
 )
 
 func InitWorld() {
@@ -31,32 +40,63 @@ func DevWorld(testSeed uint64) {
 	if testSeed == 0 {
 		seed = uint64(time.Now().Nanosecond())
 	}
-
-	r, _ := NewRand(seed)
+	r, _ := lib.NewRand(seed)
 	Rand = r
 
-	ResetState()
+	engine.ResetState()
 
-	//for i := 0; i < 40; i++ {
-	//	fmt.Println(starName())
-	//}
-	DevWorldStars()
-	DebugSectors(true)
+	starPos := &lib.V3{0.1, 0.1, (14.2 * sectorSize) / gridUnit}
+	star := physics.NewStar(1.0)
 
+	starSector := GetSector(starPos)
+	starSector.addStarFixed(star, starPos)
+	starSector.Mapped = 1.0
+
+	starRF := S.EntFrames[star.Entity]
+
+	devheim := &Planet{
+		Entity:         S.NewEntity(),
+		Mass:           1.0,
+		Radius:         1.0 * earthRadius,
+		AxialTilt:      0.0, // TODO: earth's
+		RotationPeriod: 24 * 3600,
+		SurfaceGravity: 1.0 * g0,
+		Atmosphere: &Atmosphere{
+			Height:           100 * 1000,
+			ScaleHeight:      8.5 * 1000,
+			PressureSeaLevel: 1.0 * earthSeaLevelPressure,
+		},
+	}
+
+	devheimRF := &RefFrame{
+		Parent:      starRF,
+		Pos:         nil,
+		Orbit:       star.DefaultOrbit(),
+		Orientation: nil, // TODO
+	}
+	S.EntFrames[devheim.Entity] = devheimRF
+	
+
+	e := DevNewShip()
+	S.EntFrames[e] = devheimRF
+	S.Orb[e] = devheim.DefaultOrbit()
+
+	
+	
+	//
 	// TODO: begin stationary relative top-level galactic grid
 	// TODO: implement hyperdrive in any direction; sector traversal triggering
 	//       star procgen
 	//
 	// TODO: and then - hyperdrive to a new star; triggering system procgen! :D  for E
 	//
-	//DevHyperdrive()
+	StartEngine()
+}
 
-	// TODO: this comes after system procgen
-	//DevShipOrbit()
-
+func StartEngine() {
 	systems := []System{
 		&Physics{},
-		//&Hyperdrive{},
+		&Hyperdrive{},
 	}
 	actionChan := make(chan Action, 10)
 	subChan := make(chan *EntitySub, 10)
@@ -86,8 +126,8 @@ func DevWorld(testSeed uint64) {
 }
 
 func DevWorldStars() {
-	solPos := &V3{0.1, 0.1, (4.2 * sectorSize) / gridUnit}
-	solLum := starLum(1.0)
+	solPos := &lib.V3{0.1, 0.1, (4.2 * sectorSize) / gridUnit}
+	solLum := StarLum(1.0)
 	solTemp := starSurfaceTemp(solLum, 1.0)
 	sol := &Star{
 		Entity: S.NewEntity(),
@@ -109,10 +149,11 @@ func DevWorldStars() {
 	solSector.addStarFixed(sol, solPos)
 	solSector.Mapped = 1.0
 
+	/*
 	// traverse a few nearby sectors to get a few nearby stars
-	north1 := GetSector(&V3{0.0, 0.0, (5.1 * aupc) / gridUnit})
-	north2 := GetSector(&V3{0.0, 0.0, (6.1 * aupc) / gridUnit})
-	north3 := GetSector(&V3{0.0, 0.0, (7.1 * sectorSize) / gridUnit})
+	north1 := GetSector(&lib.V3{0.0, 0.0, (5.1 * aupc) / gridUnit})
+	north2 := GetSector(&lib.V3{0.0, 0.0, (6.1 * aupc) / gridUnit})
+	north3 := GetSector(&lib.V3{0.0, 0.0, (7.1 * sectorSize) / gridUnit})
 
 	sectors := []*Sector{north1, north2, north3}
 	for _, s := range sectors {
@@ -120,6 +161,7 @@ func DevWorldStars() {
 			s.Traverse()
 		}
 	}
+   */
 }
 
 func DevShipOrbit() {
@@ -135,7 +177,7 @@ func DevShipOrbit() {
 
 	S.Ori[e] = new(Q)
 
-	S.Rot[e] = &Rotational{new(V3), new(M3), new(M3), new(M4)}
+	S.Rot[e] = &Rotational{new(lib.V3), new(M3), new(M3), new(M4)}
 	shipIC := InertiaTensorCuboid(m0, 10, 10, 10)
 	shipIC.Inverse()
 	S.Rot[e].IITB = shipIC
@@ -174,6 +216,28 @@ func DevShipOrbit() {
 	S.AddForceGen(e, &ThrustForceGen{m0 * g0 * 0.0001, 2})
 }
 
+func DevNewShip() Id {
+	e := S.NewEntity()
+		shipClass := &WarmJet{}
+	S.ShipClass[e] = shipClass
+
+	var m0 float64
+	m0 = shipClass.MassBase()
+	S.Mass[e] = &m0
+
+	S.Ori[e] = new(Q)
+
+	S.Rot[e] = &Rotational{new(lib.V3), new(M3), new(M3), new(M4)}
+	shipIC := InertiaTensorCuboid(m0, 10, 10, 10)
+	shipIC.Inverse()
+	S.Rot[e].IITB = shipIC
+
+	fgs := make([]ForceGen, 0)
+	S.ForceGens[e] = fgs
+
+	return e
+}
+
 /*
 func ShipAndStation() {
 	// TODO: split into two dev worlds: one with this and one with ship
@@ -188,9 +252,9 @@ func ShipAndStation() {
 	S.ORIC[shipEnt] = new(Q)
 
 	fgs := make([]ForceGen, 0)
-	S.MC[shipEnt] = Mobile{new(V3), &fgs}
+	S.MC[shipEnt] = Mobile{new(lib.V3), &fgs}
 
-	S.RC[shipEnt] = Rotational{new(V3), new(M3), new(M3), new(M4)}
+	S.RC[shipEnt] = Rotational{new(lib.V3), new(M3), new(M3), new(M4)}
 
 	var m0 float64
 	m0 = ship.MassBase()
@@ -201,11 +265,11 @@ func ShipAndStation() {
 
 	*S.RC[shipEnt].IITB = *shipIC
 	//log.Debug("devscene", "S.ICB[e0]", S.ICB[e0])
-	//S.AddForceGen(e0, &ThrustForceGen{&V3{m0 * g0 * 0.01, 0, 0}})
+	//S.AddForceGen(e0, &ThrustForceGen{&lib.V3{m0 * g0 * 0.01, 0, 0}})
 	//S.AddForceGen(e0, grid, &DragForceGen{10.0, 40.0})
 
 	// X,Y,Z position in kilometers (km) from origin
-	S.PC[shipEnt] = &V3{1, 1, 1}
+	S.PC[shipEnt] = &lib.V3{1, 1, 1}
 	r := ship.BoundingSphereRadius()
 	S.SRC[shipEnt] = &r
 
@@ -213,7 +277,7 @@ func ShipAndStation() {
 	// The Station is stationary; no mass, velocity, force gens, etc.
 	stationEnt := Id(43)
 	S.ORIC[stationEnt] = new(Q)
-	S.PC[stationEnt] = &V3{0, 0, 0}
+	S.PC[stationEnt] = &lib.V3{0, 0, 0}
 	stationRadius := 200.0
 	S.SRC[stationEnt] = &stationRadius
 
@@ -236,7 +300,7 @@ func ShipAndStation() {
 func DevWorld() {
 	fmt.Printf("Average: %v\n", MassHist.AvgMass)
 
-	solSectorPos := &V3{0.0, 0.0, (4 * aupc) / gridUnit}
+	solSectorPos := &lib.V3{0.0, 0.0, (4 * aupc) / gridUnit}
 	solSector := GetSector(solSectorPos)
 
 	solSector.Debug()
@@ -258,8 +322,8 @@ func DevWorld() {
 
 /*
 func DevWorldBase() {
-	solSectorPos := &V3{0.0, 0.0, (4 * aupc) / gridUnit}
-	solLum := starLum(1.0)
+	solSectorPos := &lib.V3{0.0, 0.0, (4 * aupc) / gridUnit}
+	solLum := StarLum(1.0)
 	solTemp := starSurfaceTemp(solLum, 1.0)
 	sol := &Star{
 		Entity: S.NewEntity(),

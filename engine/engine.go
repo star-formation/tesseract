@@ -15,7 +15,7 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-package tesseract
+package engine
 
 import (
 	"time"
@@ -42,9 +42,17 @@ import (
 
 */
 
+const (
+	//
+	// Game Engine
+	//
+	loopTarget        = 1000 * time.Millisecond
+	maxActionsPerLoop = 10
+)
+
 type GameEngine struct {
 	systems    []System
-	actionChan chan Action
+	//actionChan chan Action
 	subChan    chan *EntitySub
 }
 
@@ -74,10 +82,10 @@ func (ge *GameEngine) Loop() error {
 			last = t0
 		}
 
-		err = ge.handleUserActions()
-		if err != nil {
-			break
-		}
+		//err = ge.handleUserActions()
+		//if err != nil {
+		//	break
+		//}
 
 		// TODO: ge.handleTimerActions()
 
@@ -136,6 +144,7 @@ func (ge *GameEngine) update(worldTime, elapsed float64) error {
 	return nil
 }
 
+/*
 func (e *GameEngine) handleUserActions() error {
 	var actions []Action
 	select {
@@ -163,3 +172,4 @@ func (e *GameEngine) handleUserActions() error {
 	//return errors.New("wtf")
 	return nil
 }
+*/

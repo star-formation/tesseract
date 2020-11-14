@@ -14,7 +14,11 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-package tesseract
+package physics
+
+import (
+	"github.com/star-formation/tesseract/lib"
+)
 
 /*  See https://en.wikipedia.org/wiki/Frame_of_reference
     and https://en.wikipedia.org/wiki/Celestial_coordinate_system
@@ -51,13 +55,13 @@ type RefFrame struct {
 	// Position, Orbit and Orientation all set to nil.
 	Parent *RefFrame
 
-	Pos   *V3
+	Pos   *lib.V3
 	Orbit *OE
 
 	// Except for the top-level frame, Orientation is always non-nil;
 	// it's required to translate local coordinates to outer frame(s).
 	// A zero orientation equals inheriting the parent's frame orientation
-	Orientation *Q
+	Orientation *lib.Q
 
 	Radius float64
 
