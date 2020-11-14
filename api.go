@@ -37,6 +37,7 @@ type EntitySub struct {
 
 type EntitySubData struct {
 	OE *OE
+	OrbitalPoints []V3
 
 	Pos *V3
 	Vel *V3
@@ -47,8 +48,13 @@ type EntitySubData struct {
 
 func (es *EntitySub) Update() {
 	e := es.entity
+	var points []V3
+	if S.Orb[e] != nil {
+		points = S.Orb[e].PointsApprox(8)
+	}
 	data := EntitySubData{
 		OE:  S.Orb[e],
+		OrbitalPoints: points,
 		Pos: S.Pos[e],
 		Vel: S.Vel[e],
 		Ori: S.Ori[e],
@@ -59,6 +65,7 @@ func (es *EntitySub) Update() {
 	if err != nil {
 		panic(err)
 	}
+
 	es.dataChan <- b
 }
 
@@ -68,11 +75,9 @@ func NewEntitySub(e Id) (<-chan []byte, chan<- bool) {
 	es := &EntitySub{e, dataChan, keepAliveChan}
 
 	GE.subChan <- es
-	S.EntitySubs[es] = struct{}{}
+	S.EntitySubs[es] = true
 
 	unsub := func() {
-		close(dataChan)
-		close(keepAliveChan)
 		S.EntitySubsCloseChan <- es
 	}
 
@@ -85,12 +90,12 @@ func NewEntitySub(e Id) (<-chan []byte, chan<- bool) {
 				if ok {
 					time.Sleep(subExpiry)
 				} else {
-					log.Info("Unsubscribe: keepAlive=false")
+					log.Info("EntitySub unsubscribe: keepAlive=false")
 					unsub()
 					return
 				}
 			default:
-				log.Info("Unsubscribe: expired")
+				log.Info("EntitySub unsubscribe: expired")
 				unsub()
 				return
 			}

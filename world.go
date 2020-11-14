@@ -37,11 +37,47 @@ func DevWorld(testSeed uint64) {
 
 	ResetState()
 
-	//for i := 0; i < 40; i++ {
-	//	fmt.Println(starName())
-	//}
-	DevWorldStars()
-	DebugSectors(true)
+	starPos := &V3{0.1, 0.1, (14.2 * sectorSize) / gridUnit}
+	star := NewStar(1.0)
+
+	starSector := GetSector(starPos)
+	starSector.addStarFixed(star, starPos)
+	starSector.Mapped = 1.0
+
+	starRF := S.EntFrames[star.Entity]
+
+	devMars := &Planet{
+		Entity:         S.NewEntity(),
+		Mass:           0.107 * earthMass,
+		Radius:         0.533 * earthRadius,
+		AxialTilt:      25.19,
+		RotationPeriod: 24.6 * 3600,
+		SurfaceGravity: 0.3794 * g0,
+		Atmosphere: &Atmosphere{
+			Height:           40 * 1000,
+			ScaleHeight:      11.1 * 1000,
+			PressureSeaLevel: 0.1 * earthSeaLevelPressure,
+		},
+	}
+
+	devMarsRF := &RefFrame{
+		Parent:      starRF,
+		Pos:         nil,
+		Orbit:       star.DefaultOrbit(),
+		Orientation: nil, // TODO
+	}
+	S.EntFrames[devMars.Entity] = devMarsRF
+	
+
+	e := DevNewShip()
+	S.EntFrames[e] = devMarsRF
+	S.Orb[e] = devMars.DefaultOrbit()
+
+	//log.Debug("devMars", "oe", devMarsRF.Orbit)
+	log.Debug("ship", "oe", S.Orb[e], "points", S.Orb[e].PointsApprox(4))
+	
+
+	StartEngine()
 
 	// TODO: begin stationary relative top-level galactic grid
 	// TODO: implement hyperdrive in any direction; sector traversal triggering
@@ -53,7 +89,9 @@ func DevWorld(testSeed uint64) {
 
 	// TODO: this comes after system procgen
 	//DevShipOrbit()
+}
 
+func StartEngine() {
 	systems := []System{
 		&Physics{},
 		//&Hyperdrive{},
@@ -139,7 +177,6 @@ func DevShipOrbit() {
 	shipIC := InertiaTensorCuboid(m0, 10, 10, 10)
 	shipIC.Inverse()
 	S.Rot[e].IITB = shipIC
-
 	fgs := make([]ForceGen, 0)
 	S.ForceGens[e] = fgs
 
@@ -147,31 +184,31 @@ func DevShipOrbit() {
 	solRF := S.EntFrames[sol.Entity]
 	S.EntFrames[e] = solRF
 
-	devheim := &Planet{
+	devMars := &Planet{
 		Entity:         S.NewEntity(),
-		Mass:           1.0,
-		Radius:         1.0 * earthRadius,
-		AxialTilt:      0.0, // TODO: earth's
-		RotationPeriod: 24 * 3600,
-		SurfaceGravity: 1.0 * g0,
+		Mass:           0.107 * earthMass,
+		Radius:         0.533 * earthRadius,
+		AxialTilt:      25.19,
+		RotationPeriod: 24.6 * 3600,
+		SurfaceGravity: 0.3794 * g0,
 		Atmosphere: &Atmosphere{
-			Height:           100 * 1000,
-			ScaleHeight:      8.5 * 1000,
-			PressureSeaLevel: 1.0 * earthSeaLevelPressure,
+			Height:           40 * 1000,
+			ScaleHeight:      11.1 * 1000,
+			PressureSeaLevel: 0.1 * earthSeaLevelPressure,
 		},
 	}
 
-	devheimRF := &RefFrame{
+	devMarsRF := &RefFrame{
 		Parent:      solRF,
 		Pos:         nil,
 		Orbit:       sol.DefaultOrbit(),
 		Orientation: nil, // TODO
 	}
-	S.EntFrames[devheim.Entity] = devheimRF
+	S.EntFrames[devMars.Entity] = devMarsRF
 
-	S.EntFrames[e] = devheimRF
-	S.Orb[e] = devheim.DefaultOrbit()
-	S.AddForceGen(e, &ThrustForceGen{m0 * g0 * 0.0001, 2})
+	S.EntFrames[e] = devMarsRF
+	S.Orb[e] = devMars.DefaultOrbit()
+	//S.AddForceGen(e, &ThrustForceGen{m0 * g0 * 0.0001, 2})
 }
 
 /*
@@ -345,3 +382,25 @@ func DevWorldBase() {
 	S.EntFrames[sol.Entity] = solRF
 }
 */
+
+func DevNewShip() Id {
+	e := S.NewEntity()
+	shipClass := &WarmJet{}
+	S.ShipClass[e] = shipClass
+
+	var m0 float64
+	m0 = shipClass.MassBase()
+	S.Mass[e] = &m0
+
+	S.Ori[e] = new(Q)
+
+	S.Rot[e] = &Rotational{new(V3), new(M3), new(M3), new(M4)}
+	shipIC := InertiaTensorCuboid(m0, 10, 10, 10)
+	shipIC.Inverse()
+	S.Rot[e].IITB = shipIC
+
+	fgs := make([]ForceGen, 0)
+	S.ForceGens[e] = fgs
+
+	return e
+}

@@ -47,12 +47,12 @@ type State struct {
 	EntCount  uint64
 	EntFrames map[Id]*RefFrame
 
-	HotEnts  map[*RefFrame]map[Id]struct{}
-	IdleEnts map[*RefFrame]map[Id]struct{}
+	HotEnts  map[*RefFrame]map[Id]bool
+	IdleEnts map[*RefFrame]map[Id]bool
 
 	IdleSince map[Id]float64
 
-	EntitySubs          map[*EntitySub]struct{}
+	EntitySubs          map[*EntitySub]bool
 	EntitySubsCloseChan chan *EntitySub
 
 	// Hyperspace component holds data used by the Hyperdrive System
@@ -97,13 +97,13 @@ func ResetState() {
 	channels2 := make([]chan<- []byte, 0)
 	s.ActionBus = &MessageBus{channels2}
 
-	s.EntitySubs = make(map[*EntitySub]struct{}, 0)
+	s.EntitySubs = make(map[*EntitySub]bool, 0)
 	s.EntitySubsCloseChan = make(chan *EntitySub, 100)
 
 	s.EntFrames = make(map[Id]*RefFrame, 0)
 
-	s.HotEnts = make(map[*RefFrame]map[Id]struct{}, 0)
-	s.IdleEnts = make(map[*RefFrame]map[Id]struct{}, 0)
+	s.HotEnts = make(map[*RefFrame]map[Id]bool, 0)
+	s.IdleEnts = make(map[*RefFrame]map[Id]bool, 0)
 	s.IdleSince = make(map[Id]float64, 0)
 
 	s.Hyperspace = make(map[Id]*Hyperspace, 0)
@@ -128,14 +128,14 @@ func (s *State) NewEntity() Id {
 
 func (s *State) SetHot(e Id, rf *RefFrame) {
 	s.ensureEntAlloc(rf)
-	s.HotEnts[rf][e] = struct{}{}
+	s.HotEnts[rf][e] = true
 	delete(s.IdleEnts[rf], e)
 }
 
 func (s *State) SetIdle(e Id, rf *RefFrame, since float64) {
 	s.ensureEntAlloc(rf)
 	delete(s.HotEnts[rf], e)
-	s.IdleEnts[rf][e] = struct{}{}
+	s.IdleEnts[rf][e] = true
 	s.IdleSince[e] = since
 }
 
@@ -144,10 +144,10 @@ func (s *State) ensureEntAlloc(rf *RefFrame) {
 		panic("nil rf")
 	}
 	if s.HotEnts[rf] == nil {
-		s.HotEnts[rf] = make(map[Id]struct{}, 1)
+		s.HotEnts[rf] = make(map[Id]bool, 1)
 	}
 	if s.IdleEnts[rf] == nil {
-		s.IdleEnts[rf] = make(map[Id]struct{}, 1)
+		s.IdleEnts[rf] = make(map[Id]bool, 1)
 	}
 }
 

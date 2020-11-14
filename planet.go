@@ -35,7 +35,7 @@ type Planet struct {
 // surface or above its atmosphere (if it has one).
 func (p *Planet) DefaultOrbit() *OE {
 	e, i, Ω, ω, θ := 0.0, 0.0, 0.0, 0.0, 0.0
-	μ := GravitationalConstant * p.Mass * earthMass
+	μ := GravitationalConstant * p.Mass
 	r := 100000.0
 	if p.Atmosphere != nil {
 		r += p.Atmosphere.Height

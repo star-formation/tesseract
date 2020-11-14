@@ -90,12 +90,14 @@ func (ge *GameEngine) Loop() error {
 		for len(S.EntitySubsCloseChan) > 0 {
 			es := <-S.EntitySubsCloseChan
 			delete(S.EntitySubs, es)
+			close(es.dataChan)
+			close(es.keepAliveChan)
 		}
 
 		// TODO: auth and throttling
 		for len(ge.subChan) > 0 {
 			es := <-ge.subChan
-			S.EntitySubs[es] = struct{}{}
+			S.EntitySubs[es] = true
 		}
 
 		for es, _ := range S.EntitySubs {
