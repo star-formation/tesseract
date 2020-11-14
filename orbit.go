@@ -20,6 +20,8 @@ package tesseract
 import (
 	"fmt"
 	"math"
+
+	"github.com/ethereum/go-ethereum/log"
 )
 
 // Types and functions for Orbital Mechanics.
@@ -41,13 +43,13 @@ import (
 //
 // Elements/Fields:
 //
-// h: Specific angular momentum (See [3] and chapter 2.4 in [1])
-// i: Inclination
-// Ω: Longitude of the ascending node
-// e: Eccentricity
-// ω: Argument of Periapsis
-// θ: True Anomaly
-// μ: Standard gravitational parameter of the primary
+// h: Specific angular momentum (m^2·s^-1) (See [3] and chapter 2.4 in [1])
+// i: Inclination (degrees)
+// Ω: Longitude of the ascending node (degrees)
+// e: Eccentricity (0 <= e <= inf)
+// ω: Argument of Periapsis (degrees)
+// θ: True Anomaly (degrees)
+// μ: Standard gravitational parameter of the primary (m^3·s^-2)
 type OE struct {
 	h, i, Ω, e, ω, θ, μ float64
 }
@@ -347,12 +349,17 @@ func (o *OE) OrbitalToStateVector() (*V3, *V3) {
 // The points are ordered by orbital direction and evenly spaced in orbital
 // time but not in distance (unless the orbit is circular).
 func (o *OE) PointsApprox(n uint) []V3 {
+	period := o.Period()
+	if math.IsInf(period, 0) {
+		panic("TODO: support parabolic and hyperbolic orbits")
+	}
+	
 	var t float64
 	points := make([]V3, n)
-	period := o.Period()
 	interval := period / float64(n)
 	for i := uint(0); i < n; i++ {
 		θ := o.TrueAnomalyFromTime(t)
+		log.Debug("PointsApprox", "period", period, "t", t, "θ",θ)
 		o.θ = θ
 		pos, _ := o.OrbitalToStateVector()
 		points[i] = *pos

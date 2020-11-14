@@ -18,7 +18,10 @@
 package tesseract
 
 import (
+	"fmt"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/log"
 )
 
 // Exact values in these tests often differ slightly from the
@@ -132,7 +135,25 @@ func TestFromTimeHyperbolic(t *testing.T) {
 }
 
 func TestPointsApprox(t *testing.T) {
+	// TODO: support this orbit
+	// Example 4.7.
+	//o := &OE{80000, DegToRad(30), DegToRad(40), 1.4, DegToRad(60), DegToRad(30), 398600}
+
+	o := &OE{}
+	o.μ = marsMu / 1e9
+	o.h = 14000
+	o.e = 0.0
+	o.i = 0.0
 	
+	o.Ω = 0.0
+	o.ω = 0.0
+	o.θ = 0.0
+
+	points := o.PointsApprox(8)
+	f := func(fl float64) string { return fmt.Sprintf("%.2f", fl) }
+	for _, p := range points {
+		log.Debug("point", "x", f(p.X), "y", f(p.Y), "z", f(p.Z))
+	}
 }
 
 

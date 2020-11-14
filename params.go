@@ -66,6 +66,8 @@ const (
 	earthSeaLevelPressure = 101325 // pascals
 	g0                    = 9.80665
 
+	marsMu = 4.282837e13
+
 	//
 	// Physics Engine
 	//
