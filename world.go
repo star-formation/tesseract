@@ -43,8 +43,16 @@ func DevWorld(testSeed uint64) {
 	DevWorldStars()
 	DebugSectors(true)
 
+	// TODO: begin stationary relative top-level galactic grid
+	// TODO: implement hyperdrive in any direction; sector traversal triggering
+	//       star procgen
+	//
+	// TODO: and then - hyperdrive to a new star; triggering system procgen! :D  for E
+	//
 	//DevHyperdrive()
-	DevShipOrbit()
+
+	// TODO: this comes after system procgen
+	//DevShipOrbit()
 
 	systems := []System{
 		&Physics{},

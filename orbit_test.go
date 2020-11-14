@@ -80,7 +80,7 @@ func TestFromTimeElliptic(t *testing.T) {
 
 	// In example 3.1, step 3, the final value is 193.2
 	exθ := DegToRad(193.1540909884592)
-	θ := o.TrueAnomalyFromTime(0, 10800)
+	θ := o.TrueAnomalyFromTime(10800)
 	if θ != exθ {
 		t.Errorf("θ: got: \n%v, expected: \n%v", RadToDeg(θ), RadToDeg(exθ))
 	}
@@ -94,7 +94,7 @@ func TestFromTimeParabolic(t *testing.T) {
 	o.μ = 398600.0
 
 	exθ := 144.75444965830107
-	θ := o.TrueAnomalyFromTime(0, 6*3600)
+	θ := o.TrueAnomalyFromTime(6*3600)
 	if RadToDeg(θ) != exθ {
 		t.Errorf("θ: got: \n%v, expected: \n%v", RadToDeg(θ), exθ)
 	}
@@ -117,7 +117,7 @@ func TestFromTimeHyperbolic(t *testing.T) {
 
 	// Example 3.5 step 5 yields 107.78 degrees
 	exθ := 1.8811167388351486 //DegToRad(107.78)
-	θ := o.TrueAnomalyFromTime(0, 4141.4+3*3600)
+	θ := o.TrueAnomalyFromTime(4141.4+3*3600)
 	if θ != exθ {
 		t.Errorf("θ: got: \n%v, expected: \n%v", θ, exθ)
 	}
@@ -130,6 +130,11 @@ func TestFromTimeHyperbolic(t *testing.T) {
 	}
 
 }
+
+func TestPointsApprox(t *testing.T) {
+	
+}
+
 
 //
 // Benchmarks

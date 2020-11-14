@@ -1,3 +1,11 @@
+# emacs
+*~
+physics/*~
+engine/*~
+gameplay/*~
+lib/*~
+
+
 # Binaries for programs and plugins
 *.exe
 *.dll

@@ -132,25 +132,19 @@ func (o *OE) Period() float64 {
 	return math.Inf(1) // positive infinity
 }
 
-// TrueAnomalyFromTime returns the orbit's true anomaly in radians at time t1
-// using t0 as the time of the set true anomaly.
-// TrueAnomalyFromTime panics if t1 is not greater than t0.
-func (o *OE) TrueAnomalyFromTime(t0, t1 float64) float64 {
-	if t1 <= t0 {
-		panic("t1 must be greater than t0")
-	}
-
+// TrueAnomalyFromTime returns the orbit's true anomaly in radians at time t.
+func (o *OE) TrueAnomalyFromTime(t float64) float64 {
 	h, e, μ := o.h, o.e, o.μ
 	var θ float64
 
 	switch {
 	case e == 0: // circular
 		// Chapter 3.3
-		θ = (twoPi / o.Period()) * t1
+		θ = (twoPi / o.Period()) * t
 
 	case e < 1: // elliptical
 		// Eqn 3.8
-		Me := (twoPi / o.Period()) * t1
+		Me := (twoPi / o.Period()) * t
 		// Algorithm 3.1
 		E := eccentricAnomaly(e, Me)
 		// Eqn 3.13a
@@ -159,7 +153,7 @@ func (o *OE) TrueAnomalyFromTime(t0, t1 float64) float64 {
 
 	case e == 1: // parabolic
 		// Eqn 3.31
-		Mp := (μ * μ * t1) / (h * h * h)
+		Mp := (μ * μ * t) / (h * h * h)
 		// Eqn 3.32
 		x0 := (3*Mp + math.Sqrt(math.Pow(3*Mp, 2)+1))
 		x1 := math.Pow(x0, 1.0/3.0) - math.Pow(x0, -1.0/3.0)
@@ -169,7 +163,7 @@ func (o *OE) TrueAnomalyFromTime(t0, t1 float64) float64 {
 		// Eqn 3.34
 		x0 := (μ * μ) / (h * h * h)
 		x1 := math.Pow(e*e-1, 3.0/2.0)
-		Mh := x0 * x1 * t1
+		Mh := x0 * x1 * t
 		// Algorithm 3.2
 		F := hyperbolicEccentricAnomaly(e, Mh)
 		// Eqn 3.44b
@@ -348,3 +342,22 @@ func (o *OE) OrbitalToStateVector() (*V3, *V3) {
 
 	return pos, vel
 }
+
+// PointsApprox returns n points approximating the orbit.
+// The points are ordered by orbital direction and evenly spaced in orbital
+// time but not in distance (unless the orbit is circular).
+func (o *OE) PointsApprox(n uint) []V3 {
+	var t float64
+	points := make([]V3, n)
+	period := o.Period()
+	interval := period / float64(n)
+	for i := uint(0); i < n; i++ {
+		θ := o.TrueAnomalyFromTime(t)
+		o.θ = θ
+		pos, _ := o.OrbitalToStateVector()
+		points[i] = *pos
+		t += interval
+	}
+	return points
+}
+

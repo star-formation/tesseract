@@ -23,13 +23,6 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 )
 
-//
-// References:
-//
-// [1] Millington, Ian. Game physics engine development (Second Edition). CRC Press, 2010.
-// [2] https://github.com/idmillington/cyclone-physics/blob/master/include/cyclone/core.h
-//
-
 func init() {
 	log.Root().SetHandler(log.MultiHandler(
 		log.StreamHandler(os.Stderr, log.TerminalFormat(true)),
