@@ -54,6 +54,7 @@ func main() {
 		log.Info("==== starburst")
 		// TODO: pass rand seed
 		tesseract.DevWorld(c.Uint64("testseed"))
+		tesseract.StartWebSocket()
 		return nil
 	}
 

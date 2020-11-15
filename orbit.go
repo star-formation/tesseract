@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/ethereum/go-ethereum/log"
+	//"github.com/ethereum/go-ethereum/log"
 )
 
 // Types and functions for Orbital Mechanics.
@@ -359,7 +359,7 @@ func (o *OE) PointsApprox(n uint) []V3 {
 	interval := period / float64(n)
 	for i := uint(0); i < n; i++ {
 		θ := o.TrueAnomalyFromTime(t)
-		log.Debug("PointsApprox", "period", period, "t", t, "θ",θ)
+		//log.Debug("PointsApprox", "period", period, "t", t, "θ",θ)
 		o.θ = θ
 		pos, _ := o.OrbitalToStateVector()
 		points[i] = *pos
