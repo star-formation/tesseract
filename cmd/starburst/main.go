@@ -52,7 +52,7 @@ func main() {
 
 	app.Action = func(c *cli.Context) error {
 		log.Info("==== starburst")
-		// TODO: pass rand seed
+		// pass static seed to get deterministic, reproducible procgen
 		tesseract.DevWorld(c.Uint64("testseed"))
 		tesseract.StartWebSocket()
 		return nil

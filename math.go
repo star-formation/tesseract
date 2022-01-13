@@ -273,3 +273,117 @@ func NormalizeAngle(a float64) float64 {
 	}
 	return a
 }
+
+//
+//
+//
+
+type TriangleMesh struct {
+	vertices []*V3
+	// TODO: half edge
+}
+
+//
+func QuickHull3D(ps []*V3) *TriangleMesh {
+	sPos, sR := boundingSphere(ps)
+	maxTetrahedron := regularTetrahedron(sPos, sR)
+
+	tm := &TriangleMesh{}
+
+
+
+	return tm
+} 
+
+// regularTetrahedron returns the regular tetrahedron that has
+// the insphere equal to the passed sphere.
+// [1] Klein, P.P. (2020) The Insphere of a Tetrahedron. Applied Mathematics , 11, 601-612.
+// [2] https://en.wikipedia.org/wiki/Inscribed_sphere
+func regularTetrahedron(p *V3, r float64) [4]*V3 {
+	// length of each edge
+	a := r * (12 * math.Sqrt(6))
+
+	// See [1] Example 1, page 611.
+	// Distance from sphere center to each vertex:
+	vDist := (1/2)*math.Sqrt((3/2)*a)
+	
+	// set "top" vertex to insphere's center offset by vDist on Z axis
+	v1 := &V3{p.X, p.Y, p.Z - vDist}
+	
+	// base remaining vertices on the top vertex and then
+	// adjust to get enclosing tetrahedron
+	v2 := new(V3).Set(v1)
+	v3 := new(V3).Set(v1)
+	v4 := new(V3).Set(v1)
+
+	v2.X += a
+
+	v3.X += a/2
+	v3.Y += (math.Sqrt(3)/2)*a
+	
+	v4.X += a/2
+	v4.Y += (1/(2*math.Sqrt(3)))*a
+	v4.Z += math.Sqrt(2/3)*a
+
+	return [4]*V3{v1, v2, v3, v4}
+}
+
+// boundingSphere returns a bounding sphere for point set ps based on the
+// axis-aligned mininum bounding box for ps.
+// The returned bounding sphere is guaranteed to contain all points in ps but
+// is likely not the mininum bounding sphere for ps.
+func boundingSphere(ps []*V3) (*V3, float64) {
+	box := aabb(ps)
+	pos := &V3{
+		(box[7].X - box[0].X) / 2,
+		(box[7].Y - box[0].Y) / 2,
+		(box[7].Z - box[0].Z) / 2,
+	}
+
+	max := 0.0
+	diff := new(V3)
+	for _, p := range ps {
+		diff.Sub(pos, p)
+		sqMag := diff.SquareMagnitude()
+		if sqMag > max {
+			max = sqMag
+		}
+	}
+	return pos, math.Sqrt(max)
+}
+
+// aabb returns the X,Y,Z axis-aligned minimum bounding box for point set ps.
+func aabb(ps []*V3) [8]*V3 {
+	minX, maxX, minY, maxY, minZ, maxZ := ps[0].X, ps[0].X, ps[0].Y, ps[0].Y, ps[0].Z, ps[0].Z
+	for _, p := range ps {
+		if p.X < minX {
+			minX = p.X
+		}
+		if p.X > maxX {
+			maxX = p.X
+		}
+		if p.Y < minY {
+			minY = p.Y
+		}
+		if p.Y > maxY {
+			maxY = p.Y
+		}
+		if p.Z < minZ {
+			minZ = p.Z
+		}
+		if p.Z > maxZ {
+			maxZ = p.Z
+		} 
+	}
+	return [8]*V3{
+		&V3{minX, minY, minZ},
+		&V3{minX, maxY, minZ},
+		&V3{minX, minY, maxZ},
+		&V3{minX, maxY, maxZ},
+
+		&V3{maxX, minY, minZ},
+		&V3{maxX, maxY, minZ},
+		&V3{maxX, minY, maxZ},
+		&V3{maxX, maxY, maxZ},
+	}
+}

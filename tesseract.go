@@ -30,7 +30,7 @@ func init() {
 			log.LvlDebug,
 			log.Must.FileHandler("tesseract_errors.json", log.JSONFormat()))))
 
-	MassHist = getMassHistogram()
+	//MassHist = getMassHistogram()
 
 	//InitWorld()
 }
